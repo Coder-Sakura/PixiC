@@ -12,3 +12,7 @@
 + 发现使用seofangfa的ip反而更慢，所以在请求时并没有使用proxy
 + 但是在启动时会进行ip的抓取和校验，目前暂时跳过了，有需要可以自己更改
 + 后续
+
+> 详细可参考：[Blog](https://coder-sakura.github.io/blog/)
+>
+> 使用搜索，输入pixiv即可
