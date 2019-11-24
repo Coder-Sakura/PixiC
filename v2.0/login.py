@@ -9,8 +9,9 @@ class Login(object):
 
 	def __init__(self,cookie_update=COOKIE_UPDATE_ENABLED):	
 		self.cookie = self.get_cookie() if cookie_update == True else self.set_cookie()
-		print(len(self.cookie))
-		# print(1) if self.cookie_update == True else print(2)
+
+	# def res(self):
+	# 	return self.cookie
 
 	def get_cookie(self):
 		'''
@@ -42,6 +43,7 @@ class Login(object):
 			for cookie in cookies:
 				jar.set(cookie['name'], cookie['value'])
 		return jar
-Login()
+		
+# Login()
 # if __name__ == '__main__':
 # 	Login()
