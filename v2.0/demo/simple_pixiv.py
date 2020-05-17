@@ -1,7 +1,7 @@
 # -*- coding:utf-8 -*-
 import requests
 from bs4 import BeautifulSoup
-from lxml import etree
+# from lxml import etree
 
 import os
 import time
@@ -15,6 +15,7 @@ import imageio  #合成gif
 import zipfile  #解压缩
 #强制取消警告
 from requests.packages.urllib3.exceptions import InsecureRequestWarning     
+from requests.exceptions import *
 from requests.adapters import HTTPAdapter
 from requests.cookies import RequestsCookieJar
 from selenium import webdriver
@@ -27,107 +28,204 @@ se.cookies = CookieJar()
 se.mount('http://', HTTPAdapter(max_retries=1))
 se.mount('https://', HTTPAdapter(max_retries=1))
 
-class Pixiv():
+def log_str(*args):
+    for i in args:
+        now_time = time.strftime("%Y-%m-%d %H:%M:%S")
+        print('{} {}'.format(now_time,i))
 
+
+class Pixiv():
     def __init__(self):
-        self.base_url = 'https://accounts.pixiv.net/login?lang=zh&source=pc&view_type=page&ref=wwwtop_accounts_index'   #获取postkey
-        self.login_url = 'https://accounts.pixiv.net/api/login?lang=zh'                                                 #登录# self.target_url = 'http://www.pixiv.net/search.php?' \# 'word=1&order=date_d&p='
-        # self.target_url = 'https://www.pixiv.net/member_illust.php?mode=medium&illust_id='                              #从画师作品界面点击图片跳转的url
-        # self.main_url = 'http://www.pixiv.net/member_illust.php?id='                                                    #画师用户个人url
-        self.user_agent_list = ["Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.106 Safari/537.36",
-                    "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.99 Safari/537.36",
-                    "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/64.0.3282.186 Safari/537.36",
-                    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/62.0.3202.62 Safari/537.36",
-                    "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/45.0.2454.101 Safari/537.36",
-                    "Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 6.0)",
-                    "Mozilla/5.0 (Macintosh; U; PPC Mac OS X 10.5; en-US; rv:1.9.2.15) Gecko/20110303 Firefox/3.6.15",
-                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/72.0.3626.109 Safari/537.36"]
-        # 'referer': 'https://accounts.pixiv.net/login',
         self.headers = {
-            'referer': 'https://accounts.pixiv.net/login?lang=zh&source=pc&view_type=page&ref=wwwtop_accounts_index',
+            "Connection": "keep-alive",
+            'referer': 'https://www.pixiv.net/',
             'origin': 'https://accounts.pixiv.net',
             'user-agent': 'Mozilla/5.0 (Windows NT 10.0; WOW64) '
                           'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.87 Safari/537.36',
             # 'cookie':'first_visit_datetime_pc=2019-06-30+14%3A02%3A10; p_ab_id=7; p_ab_id_2=2; p_ab_d_id=1741459444; _ga=GA1.2.1541262787.1560534037; privacy_policy_agreement=1; c_type=20; a_type=0; b_type=0; module_orders_mypage=%5B%7B%22name%22%3A%22sketch_live%22%2C%22visible%22%3Atrue%7D%2C%7B%22name%22%3A%22tag_follow%22%2C%22visible%22%3Atrue%7D%2C%7B%22name%22%3A%22recommended_illusts%22%2C%22visible%22%3Atrue%7D%2C%7B%22name%22%3A%22everyone_new_illusts%22%2C%22visible%22%3Atrue%7D%2C%7B%22name%22%3A%22following_new_illusts%22%2C%22visible%22%3Atrue%7D%2C%7B%22name%22%3A%22mypixiv_new_illusts%22%2C%22visible%22%3Atrue%7D%2C%7B%22name%22%3A%22spotlight%22%2C%22visible%22%3Atrue%7D%2C%7B%22name%22%3A%22fanbox%22%2C%22visible%22%3Atrue%7D%2C%7B%22name%22%3A%22featured_tags%22%2C%22visible%22%3Atrue%7D%2C%7B%22name%22%3A%22contests%22%2C%22visible%22%3Atrue%7D%2C%7B%22name%22%3A%22user_events%22%2C%22visible%22%3Atrue%7D%2C%7B%22name%22%3A%22sensei_courses%22%2C%22visible%22%3Atrue%7D%2C%7B%22name%22%3A%22booth_follow_items%22%2C%22visible%22%3Atrue%7D%5D; yuid_b=KSKZB1M; login_ever=yes; __utmv=235335808.|2=login%20ever=yes=1^3=plan=normal=1^6=user_id=27858363=1^9=p_ab_id=7=1^10=p_ab_id_2=2=1^11=lang=zh=1; ki_r=; __utmz=235335808.1561936687.5.3.utmcsr=pixiv.help|utmccn=(referral)|utmcmd=referral|utmcct=/hc/zh-tw; limited_ads=%7B%22responsive%22%3A%22%22%7D; categorized_tags=3ze0RLmk59~6sZKldb07K~HLWLeyYOUF~OT-C6ubi9i~jfnUZgnpFl; tag_view_ranking=jfnUZgnpFl~SQZaakhtVv~uW5495Nhg-~DHqIUplIEc~b3tIEUsHql~Lt-oEicbBr~RTJMXD26Ak~GF09UjQt_e~gVfGX_rH_Y~jH0uD88V6F~kwQ7-a01CG~-fP8ij-3EX~3W4zqr4Xlx~kGYw4gQ11Z~MSNRmMUDgC~8ch4HlASni~Cj_Gcw9KR1~kW8varCrdB~1yIPTg75Rl~NIpEilHR4P~5oPIfUbtd6~OYl5wlor4w~NNraL54MQl~eYIfp1VgVQ~U9A9K0M8Oi; p_b_type=1; device_token=205af45342716361b4dff3fde8e51c15; is_sensei_service_user=1; _gid=GA1.2.1295270473.1565421992; __utmc=235335808; tags_sended=1; login_bc=1; ki_t=1561871297792%3B1565423294286%3B1565423294286%3B4%3B16; __utma=235335808.988886957.1561870925.1565421994.1565426875.15; __utmt=1; __utmb=235335808.1.10.1565426875; _gat=1; PHPSESSID=27858363_050406b681a63254195a7d8484a6a4d8'
             }
+        self.pixiv_user_id = ''
         self.jar = RequestsCookieJar()
-        self.pixiv_id = '1508015265@qq.com'
-        self.password = '2016zhangjzJZ'
-        # 密码采用getpass.getpass('')隐藏输入
-        self.post_key = ''
-        self.return_to = 'https://www.pixiv.net/bookmark.php?type=user&rest=show&p='                                    #关注画师总页面                                                                   #拼接画师个人主页url    
         self.path = 'H:\se18'
-        # self.xici_headers = {
-        #     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/72.0.3626.109 Safari/537.36",
-        #     "Host": "www.xicidaili.com"
-        # }
-        self.agent_ip_list = []
-        self.error_ip_list = []
         self.father_folder = ''
 
-    # 无法使用
-    def login(self):       
-        '''
-        1.P站登录改变
-        2.防止多次登录,保存cookie,目前2种方法：手动和selenium,还未破解
-        login方法重写为无cookie时模拟登录获取cookie并保存到本地,有则直接读取
-        '''
-        post_key_html = se.get(self.base_url,headers=self.headers)
-        post_key_soup = BeautifulSoup(post_key_html.text, 'lxml')
-        self.post_key = post_key_soup.find('input')['value']
-        print(self.post_key)    #捕获postkey
-        # v3_token = self.v3()
-        data = {
-            'captcha':'',
-            'g_recaptcha_response':'',
-            'password': self.password,
-            'pixiv_id': self.pixiv_id,
-            'post_key': self.post_key,
-            'source':'pc',
-            'ref':'',
-            'return_to': 'https://www.pixiv.net/',
-            # 'source':'pc',
-            # 'recaptcha-v3-token':v3_token
-            }
-        headers = self.headers
-        # headers['cookie'] = '_ga=GA1.3.1541262787.1560534037; _gid=GA1.3.1107149500.1561844268; p_ab_id=7; p_ab_id_2=2; p_ab_d_id=1741459444; _ga=GA1.2.1541262787.1560534037; _gid=GA1.2.1107149500.1561844268; login_bc=1; device_token=59e9673172a9ed639ae020391ea35225; privacy_policy_agreement=1; c_type=20; a_type=0; b_type=0; module_orders_mypage=%5B%7B%22name%22%3A%22sketch_live%22%2C%22visible%22%3Atrue%7D%2C%7B%22name%22%3A%22tag_follow%22%2C%22visible%22%3Atrue%7D%2C%7B%22name%22%3A%22recommended_illusts%22%2C%22visible%22%3Atrue%7D%2C%7B%22name%22%3A%22everyone_new_illusts%22%2C%22visible%22%3Atrue%7D%2C%7B%22name%22%3A%22following_new_illusts%22%2C%22visible%22%3Atrue%7D%2C%7B%22name%22%3A%22mypixiv_new_illusts%22%2C%22visible%22%3Atrue%7D%2C%7B%22name%22%3A%22spotlight%22%2C%22visible%22%3Atrue%7D%2C%7B%22name%22%3A%22fanbox%22%2C%22visible%22%3Atrue%7D%2C%7B%22name%22%3A%22featured_tags%22%2C%22visible%22%3Atrue%7D%2C%7B%22name%22%3A%22contests%22%2C%22visible%22%3Atrue%7D%2C%7B%22name%22%3A%22user_events%22%2C%22visible%22%3Atrue%7D%2C%7B%22name%22%3A%22sensei_courses%22%2C%22visible%22%3Atrue%7D%2C%7B%22name%22%3A%22booth_follow_items%22%2C%22visible%22%3Atrue%7D%5D; __utmv=235335808.|2=login%20ever=yes=1^3=plan=normal=1^6=user_id=27858363=1^9=p_ab_id=7=1^10=p_ab_id_2=2=1^11=lang=zh=1; tag_view_ranking=kwQ7-a01CG~-fP8ij-3EX~3W4zqr4Xlx~kGYw4gQ11Z~MSNRmMUDgC~8ch4HlASni~Cj_Gcw9KR1~kW8varCrdB~1yIPTg75Rl~NIpEilHR4P~Lt-oEicbBr~5oPIfUbtd6~OYl5wlor4w~NNraL54MQl~eYIfp1VgVQ~U9A9K0M8Oi; __utmc=235335808; PHPSESSID=27858363_d9f2f0121462b64edf213279f63b7551; p_b_type=1; __utma=235335808.988886957.1561870925.1561905185.1561907582.3; __utmz=235335808.1561907582.3.2.utmcsr=accounts.pixiv.net|utmccn=(referral)|utmcmd=referral|utmcct=/login; __utmt=1; __utmb=235335808.1.10.1561907582'
-        rep = se.post(self.login_url, data=data, headers=headers)
-        if "success" in rep.text:
-            print('登录成功...')
-        else:
-            print(rep.text)
-            exit()
-        # if '桜花树下宇焉酱' in rep.text:
-        #     print('登陆成功')# print(rep.text)        # self.test()
+        # 关注画师的获取
+        self.follw_url = "https://www.pixiv.net/ajax/user/{}/following"
+        self.offset = 0
+        self.fix_value = 24
+        # 画师所有作品
+        self.user_illusts_url = "https://www.pixiv.net/ajax/user/{}/profile/all"
 
-    def new_login(self):
+    def get_cookie(self):
         pro_dir = r'C:\Users\Hatsune Miku\AppData\Local\Google\Chrome\User Data'
         chrome_options = webdriver.ChromeOptions()
         chrome_options.add_argument('--headless')
         chrome_options.add_argument('--no-sandbox')
         chrome_options.add_argument('--start-maximized')
+        # chrome_options.add_argument('--disable-infobars') #disable the automation prompt bar
         chrome_options.add_argument('user-data-dir='+os.path.abspath(pro_dir))
         
         driver = webdriver.Chrome(chrome_options=chrome_options)
         driver.get('https://www.pixiv.net/')
+        # pixiv.user.id
+        self.pixiv_user_id = self.get_user_id(driver.page_source)
+        self.follw_url = self.follw_url.format(self.pixiv_user_id)
+        # cookies
         cookies = driver.get_cookies()
+        driver.quit()
         
-        with open("pixiv_cookies.txt", "w") as fp:  # 不直接利用,存下来保存比较好
+        with open("pixiv_cookies", "w") as fp:  # 不直接利用,存下来保存比较好
             json.dump(cookies, fp)
 
-        driver.quit()
-        jar = self.get_cookies()
+        jar = self.set_cookie()
+        if jar == []:
+            print("请使用Chrome浏览器进行登录,以便获取cookie")
+            print("请打开代理软件")
+            exit()
+
+        self.jar = jar
         return jar
 
-    def get_cookies(self):
+    def get_user_id(self,page_source):
+        '''
+        返回登录用户的id
+        '''
+        user_id = re.findall(r'''.*?pixiv.user.id="(.*?)";.*?''',page_source.replace(" ",""))[0]
+        return user_id
+
+    def set_cookie(self):
+        '''
+        读取cookie
+        '''
         jar = RequestsCookieJar()
-        with open("pixiv_cookies.txt", "r") as fp:
+        with open("pixiv_cookies", "r") as fp:
             cookies = json.load(fp)
             for cookie in cookies:
                 jar.set(cookie['name'], cookie['value'])
         return jar
+
+    def base_request(self,options,data=None,params=None,retry_num = 5):
+        '''
+        :params options 请求参数    {"method":"get/post","url":"example.com"}
+        :params data
+        :params params
+        :params retry_num 重试次数
+        :return response对象/False
+        如果options中有定义了headers参数,则使用定义的;否则使用init中初始化的headers
+
+        下面这行列表推导式作用在于：
+        添加referer时,referer需要是上一个页面的url,比如:画师/作品页面的url时,则可以自定义请求头
+        demo如下:
+        demo_headers = self.headers.copy()
+        demo_headers['referer']  = 'www.example.com'
+        options ={
+            "method":"get",
+            "url":"origin_url",
+            "headers":demo_headers
+        }
+        base_request(options=options)
+        这样base_requests中使用的headers则是定制化的headers,而非init中初始化的默认headers了
+        '''
+        base_headers = [options['headers'] if 'headers' in options.keys() else self.headers][0]
+        try:
+            response = requests.request(
+                    options["method"],
+                    options["url"],
+                    data = data,
+                    params = params,
+                    cookies = self.jar,
+                    headers = base_headers,
+                    verify=False,
+                    timeout = 15,
+                )
+            return response
+        except Exception as e:
+        # except [TimeoutError,RequestException] as e:
+            if retry_num > 0:
+                return self.base_request(options,data,params,retry_num-1)
+            else:
+                print(e)
+                print("代理无效或网络错误")
+                # return False
     
-    def attention_html(self):       #获取关注画师界面的各种信息
+    def get_page_users(self,offset):
+        '''
+        :params offset 偏移量
+        '''
+        params = {
+            "offset":offset,
+            "limit":self.fix_value,
+            "rest":"show"
+        }
+        resp = self.base_request(options={"method":"get","url":self.follw_url}, params=params)
+        # resp = se.get(self.follw_url,headers=self.headers.copy(),cookies=self.jar,verify=False,timeout=15).text
+        users_list = json.loads(resp.text)
+        # print(users_list,self.follw_url)
+        return users_list
+
+    def get_all_users(self):
+        '''
+        获取关注所有关注画师信息,包括uid,author,latest_pid
+        '''
+        offset = self.offset
+        follow_page = 1
+        users_info_list = []
+
+        while True:
+            users_list = self.get_page_users(offset)['body']['users']            
+
+            for user in users_list:
+                user_info = {}
+                user_info["uid"] = user["userId"]
+                user_info["userName"] = user["userName"]
+                user_info["latest_pid"] = user["illusts"][0]["illustId"]
+                users_info_list.append(user_info)
+                offset += 1
+                log_str("第%s页第%s位画师" % (follow_page,offset))
+
+            follow_page += 1
+            # offser += 24 
+            if len(users_list) == 24:
+                log_str('ok')
+            else:
+                log_str(len(users_list))
+                break
+        # print(users_info_list,len(users_info_list))
+        return users_info_list
+
+    def get_user_illusts(self,uid):
+        '''
+        用户所有作品字段说明:
+        illusts:普通作品,单图动图多图都在这
+        manga:漫画类作品
+        novels:小说,不考虑
+        mangaSeries:漫画系列,manga包含其中漫画系列的所有作品
+        novelSeries:小说系列,不考虑
+        综上,和以前一样,获取illusts和manga中的所有id
+        '''
+        user_illusts_url = self.user_illusts_url.format(uid)
+        log_str(user_illusts_url)
+        user_illusts = self.base_request(options={"method":"get","url":user_illusts_url}).text
+        user_illusts_json = json.loads(user_illusts)['body']
+        log_str(len(user_illusts_json['illusts']),len(user_illusts_json['manga']))
+        # log_str(len(user_illusts_json['illusts']),len(user_illusts_json['manga']),len(user_illusts_json['novels'])
+        #             ,len(user_illusts_json['mangaSeries']),len(user_illusts_json['novelSeries']))
+        # log_str(len(user_illusts_json['manga']))
+        # log_str(len(user_illusts_json['novels']))
+        # log_str(len(user_illusts_json['mangaSeries']))
+        # log_str(len(user_illusts_json['novelSeries']))
+
+
+
+
+    def main(self):
+        self.get_cookie()
+        users_info_list = self.get_all_users()
+        for user_info in users_info_list:
+            self.get_user_illusts(user_info['uid'])
+            # print()
+
+    def attention_html(self):       # 获取关注画师界面的各种信息
         attention_html = self.request(self.return_to)
         # 获取最大关注画师页数
         attention_html_soup = BeautifulSoup(attention_html.text, 'lxml')
@@ -450,140 +548,26 @@ class Pixiv():
         print('%s完成\t大小为%.2f'%(work_name,os.path.getsize(png_judge_path)/float(1024*1024)))
 
     def request(self,url,num_entries = 7):
-        try:                              #为了检查可用ip的数量，但是现在使用ip.seofangfa.com,暂时注释
-            proxy_ip = random.choice(self.agent_ip_list)
-            proxies = {'http': 'http://'+ proxy_ip,
-                        'https': 'https://'+proxy_ip}
-            # print('代理ip:%s\n' % (proxy_ip))               # proxies=proxies
+        try:
             content = se.get(url, headers=self.headers,cookies=self.jar,verify=False,timeout=15)
             return content                                              
         except:
             print('error...')
             if num_entries > 0:
-                # 现在用不到代理，暂时不做操作
-                # self.agent_ip_list.remove(proxy_ip)
-                # self.error_ip_list.append(proxy_ip)
-                self.check_agentlist()
                 print('剩余重试次数:%s' % (num_entries))
                 return self.request(url,num_entries = num_entries - 1)
             else:
                 print('代理无效或网络错误')
-
-    def check_agentlist(self):      # #为了检查可用ip的数量，但是现在使用ip.seofangfa.com,暂时注释
-        print('\n代理池总量:',len(self.agent_ip_list))
-        if len(self.agent_ip_list) < 0:
-            print('代理池总量低于阈值...')
-            self.Agent()
-        else:
-            print('代理池总量不低于阈值...')
-            return True
-
-    def Agent(self):       #收集ip        #从89代理上收集,太不稳定了
-        print('正在搜索代理ip...')
-        ip_agent_url = 'https://proxy.seofangfa.com/'
-        # ip_agent_url = 'https://www.xicidaili.com/nn/'
-        html = requests.get(url=ip_agent_url,headers=self.headers,verify=False,timeout=5)
-        
-        html_soup = BeautifulSoup(html.text, 'lxml')
-        ip_list = html_soup.find('tbody').find_all('tr')[26:]    #去除第一个和前25个，26-50为国外ip
-        # ip_list = html_soup.find('tbody').find_all('tr')[1:26]    #去除第一个和前25个，26-50为国外ip
-        items = []
-        print('搜索完成,代理信息如下:') 
-        for item in ip_list:        # list(ip_port)[0]为ip,[1]为端口,[2]响应时间,[3]位置,[4]最后验证时间
-            ip_port = list(item)[0].get_text() + ':' +list(item)[1].get_text()
-            print('ip: %s ,响应时间: %ss ,ip位置: %s' % (ip_port,list(item)[2].get_text(),list(item)[3].get_text()))
-            items.append(ip_port)        #存储爬取到的ip(需要添加)
-        self.save_ip(items)
-    
-    def save_ip(self,items):
-        # items = ['92.255.255.78:54628','54.252.210.83:80','118.136.25.116:8080',
-        #         '54.214.177.201:8888','178.62.249.43:53281','110.170.184.61:8080',
-        #         '36.65.182.191:8080','182.53.197.223:8080','194.44.138.48:53281',
-        #         '110.170.184.61:8080','103.245.19.69:56737','95.159.106.249:45259',
-        #         '82.209.217.214:8080','139.255.92.234:57269','177.91.254.116:8080',
-        #         '202.137.10.179:57338','176.60.208.30:49099','182.53.206.178:8080',
-        #         '95.159.106.249:45259','212.154.58.101:34416','109.251.252.123:50171',
-        #         '94.242.57.136:10010','212.154.58.109:34416','164.77.134.10:8080','179.127.242.60:8080']
-        print('\n正在写入...')
-        lines = self.read_txt()
-        # print(len(lines))
-        f = open('0131_pixiv.txt','a+')
-        for item_num in range(0,len(items)):
-            if items[item_num] in lines:      #进行判断
-                pass
-            else:
-                f.write(items[item_num])                #写入
-                f.write('\n')
-        f.close()
-        count_line = 0                                      #输出行数，可有可无
-        for index,line in enumerate(open('0131_pixiv.txt','r')):
-            count_line += 1
-        print('写入完成!\n当前行数:',count_line)
-        # 可以考虑将可用ip存入
-        self.judge()
-
-    def judge(self):       # 检验ip活性     # https://ip.seofangfa.com/
-        print('正在进行代理池ip活性检测......\n')
-        judge_list = self.read_txt()
-        for judge in judge_list[:10]:
-            self.agent_ip_list.append(judge)    # 暂时跳过校验
-            '''
-            if judge in self.error_ip_list:
-                print(judge,'无效')
-            else:
-                if judge in self.agent_ip_list:
-                        print(judge,'已在代理池中...')
-                else:
-                    proxy = {
-                            'http':judge,
-                            'https':judge}
-                    judge_url = 'https://www.baidu.com/'     #遍历时，利用访问百度，设定timeout=1,即在1秒内，未送到响应就断开连接
-                    # judge_url = 'https://www.pixiv.net/'     #遍历时，利用访问百度，设定timeout=1,即在1秒内，未送到响应就断开连接
-                    try:
-                        response = requests.get(url=judge_url,headers=self.headers,proxies=proxy,verify=False,timeout=5)
-                    except:
-                        print(judge,'不可用...')
-                        self.error_ip_list.append(judge)
-                    else:
-                        self.agent_ip_list.append(judge)
-                        print(judge,'可用...')
-                        '''
-        print('代理池ip活性检测完毕...\n代理池总量:',len(self.agent_ip_list),'\n代理池:',self.agent_ip_list)
-
-    def read_txt(self):
-        path = u'H:\\'
-        lines = []
-        os.chdir(path)
-        # print(os.getcwd())
-        for index,line in enumerate(open('0131_pixiv.txt','r')):        #获取文本内容
-            lines.append(line.replace('\n',''))
-        return lines
+                # 记录错误日志
     
     def work(self):
         self.Agent()
         print('开始模拟登陆...')
-        self.jar = self.new_login()
+        self.jar = self.get_cookie()
         # self.login()
         self.attention_html()
         
 pixiv = Pixiv()
-pixiv.work()
-    # 爬取ip过程 ： tbody,从第一个tr开始(第0个除外)到最后一个,利用循环,选择tr中的第一个td(ip)和第二个td(td)
-    # proxy_list = ['xxx.xxx.xxx.xxx:xxx']
-    # 然后从proxy_list中随机选出一个proxy(ip+':'+port)进行验证,访问百度响应状态码200则通过,不行则回滚重新选择ip
-    # 设置proxies的格式:
-    # proxies = {'http':'http://'+proxy,'https':'https://+proxy'}
-
-
-    # for file in files:              #jpg->png
-            #     name = os.getcwd() + '\\' + file          #PIL转换格式需要用到
-            #     png_name = file[:-4]+'.png' #png名字
-            #     im = Image.open(name)
-            #     width_pixel = im.size[0]/2  #/2gif是10M左右
-            #     high_pixel = im.size[1]/2   #im.size 是 tuple类型
-            #     size = width_pixel,high_pixel
-            #     im.thumbnail((size))
-            #     im.save(png_name)           #转换
-            #     image_list.append(png_name)
-            #     os.remove(name)             #删除jpg 
-            # print('格式转换完毕')         # print(image_list,delay,gif_name)
+pixiv.main()
+# pixiv.get_cookie()
+# pixiv.get_all_users()

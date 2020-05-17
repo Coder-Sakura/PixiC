@@ -28,35 +28,52 @@ join(),父进程阻塞等待子进程的退出,也就是在所有子进程运行
 
 
 '''
-def long_time_task(i):
-	while True:
-	    print('子进程: {} - 任务{}'.format(os.getpid(), i))
-	    print("结果: {} {}".format(8 ** 20,i))
-	    time.sleep(i)
+class Test():
+	def long_time_task(self,i):
+		# while True:
+		for i in range(5):
+		    print('子进程: {} - 任务{}'.format(os.getpid(), i))
+		    print("结果: {} {}".format(8 ** 20,i))
+		    time.sleep(i)
 
-def test(h):
-	print('这是主线程：{}'.format(threading.current_thread().name))
-	thread_list = []
-	for i in range(4, 6):
-		t = threading.Thread(target=long_time_task, args=(i, ))
-		thread_list.append(t)
+	def test(self,h):
+		print('这是主线程：{}'.format(threading.current_thread().name))
+		thread_list = []
+		for i in range(4, 6):
+			t = threading.Thread(target=self.long_time_task, args=(i, ))
+			thread_list.append(t)
 
-	for t in thread_list:
-		t.start()
+		for t in thread_list:
+			t.start()
 
-	for t in thread_list:
-		t.join()
+		for t in thread_list:
+			t.join()
+
+	def run(self):
+		print('当前母进程: {}'.format(os.getpid()))
+		p1 = Process(target=self.long_time_task, args=(1,))
+		p2 = Process(target=self.long_time_task, args=(2,))
+		p3 = Process(target=self.test, args=(3,))
+		p1.start()
+		p2.start()
+		p3.start()
+	
+
+def main():
+	t = Test()
+	t.run()
 
 if __name__ == '__main__':
-	print('当前母进程: {}'.format(os.getpid()))
-	# start = time.time()
-	p1 = Process(target=long_time_task, args=(1,))
-	p2 = Process(target=long_time_task, args=(2,))
-	p3 = Process(target=test, args=(3,))
+	main()
+# 	print('当前母进程: {}'.format(os.getpid()))
+# 	# start = time.time()
+# 	p1 = Process(target=long_time_task, args=(1,))
+# 	p2 = Process(target=long_time_task, args=(2,))
+# 	p3 = Process(target=test, args=(3,))
 
-	p1.start()
-	p2.start()
-	p3.start()
+# 	p1.start()
+# 	p2.start()
+# 	p3.start()
 
 	# 阻塞母进程,计算耗时
 	# p1.join()
