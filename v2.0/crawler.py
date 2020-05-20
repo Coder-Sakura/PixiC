@@ -11,9 +11,8 @@ import threading
 
 
 from downer import Downloader
-from folder import file_manager
 from logstr import log_str
-from test_threading_list import *
+from thread_pool import *
 
 
 class Crawler(object):
@@ -29,7 +28,7 @@ class Crawler(object):
 		self.artworks_url = "https://www.pixiv.net/artworks/{}"
 		# 画师作品列表
 		self.all_illust_url = "https://www.pixiv.net/ajax/user/{}/profile/all"
-		self.file_manager = file_manager
+		self.file_manager = Downloader.file_manager
 		self.db = Downloader.db
 		self.db.create_db()
 
@@ -143,11 +142,15 @@ class Crawler(object):
 
 	def run(self):
 		log_str("{} 开始轮询,获取关注列表...".format(self.__class__.__name__))
-		u_list = self.get_users()
+		try:
+			u_list = self.get_users()
+		except Exception as e:
+			log_str("{} 获取关注列表出错".format(__file__.split("\\")[-1].split(".")[0]))
+			log_str("{} 进入休眠".format(__file__.split("\\")[-1].split(".")[0]))
 		log_str("{} 成功获取关注列表.共{}位关注用户".format(self.__class__.__name__,len(u_list)))
-		pool = ThreadPool(8)
 
 		try:
+			pool = ThreadPool(8)
 			for u in u_list:
 				all_illust,total = self.get_user_illust(u)
 				latest_id = self.db.check_user(u)

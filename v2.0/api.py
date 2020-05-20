@@ -52,8 +52,12 @@ def p_random():
 	# extra指定tag
 	# 单tag: ta .method == "POST":
 	if request.method == "POST":
-		num = int(request.form.get('num',1))
+		num = int(request.form.get('num',0))
 		ex = request.form.get('extra',None)
+		# num必要
+		if num == 0:
+			1/0
+			return "", 500
 
 		if num > RANDOM_LIMIT:
 			num = 1
@@ -65,6 +69,7 @@ def p_random():
 			if r == None:
 				return jsonify({'result':{"error":False,"message":NO_TAG_MESSAGE}})
 			res.append(r)
+		print(res["pid"])
 		return jsonify({'result':res})
 
 # 调用则向数据库插入数据

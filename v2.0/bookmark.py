@@ -13,7 +13,7 @@ from lxml import etree
 
 from downer import Downloader
 from logstr import log_str
-from test_threading_list import *
+from thread_pool import *
 
 class Bookmark(object):
 	def __init__(self):
@@ -104,9 +104,14 @@ class Bookmark(object):
 			pool = ThreadPool(8)
 
 			for i in range(1,max_num+1):
-				log_str("当前收藏页: 第{}页".format(i))
-				pid_list = self.get_pid(etree.HTML(self.get_html(i)))
+				try:
+					pid_list = self.get_pid(etree.HTML(self.get_html(i)))
+				except:
+					log_str("当前收藏页: 第{}页失败".format(i))
+					continue
 
+				log_str("当前收藏页: 第{}页成功".format(i))
+				
 				for pid in pid_list:
 					pool.put(self.thread_by_illust,(pid,),callback)
 
