@@ -10,7 +10,12 @@ from logstr import log_str
 
 class Login(object):
 
-	def __init__(self):	
+	def __init__(self):
+		"""
+		初始化操作
+		flag用于判断是否需要请求以获得uid
+		cookie用于存储selenium获取的cookie
+		"""
 		self.host_url = "https://www.pixiv.net/"
 		self.user_id = ""
 		self.flag = True if USER_ID == "" else False
@@ -18,7 +23,7 @@ class Login(object):
 		
 	def check(self):
 		"""
-		test
+		获取cookie
 		"""
 		self.get_cookie() if COOKIE_UPDATE_ENABLED == True else self.set_cookie()
 		if self.cookie == []:
@@ -29,22 +34,25 @@ class Login(object):
 
 	def get_cookie(self):
 		'''
-		配置selenium以访问站点,保存并返回cookie
+		配置selenium以访问站点,持久化cookie
 		'''
 		chrome_options = webdriver.ChromeOptions()
-		# chrome_options.add_argument('--headless')	# 静默模式
+		# 静默模式可能会导致获取不了cookie
+		# chrome_options.add_argument('--headless')	
 		chrome_options.add_argument('--no-sandbox')
 		chrome_options.add_argument('--start-maximized')
-		chrome_options.add_experimental_option('useAutomationExtension', False)		 # 取消警告语
-		chrome_options.add_experimental_option('excludeSwitches', ['enable-automation']) # 取消警告语
-		chrome_options.add_argument('user-data-dir='+PRO_DIR)	# 用户目录配置
+		# 取消警告语
+		chrome_options.add_experimental_option('useAutomationExtension', False)
+		chrome_options.add_experimental_option('excludeSwitches', ['enable-automation'])
+		# 用户目录配置
+		chrome_options.add_argument('user-data-dir='+PRO_DIR)
 		driver = webdriver.Chrome(chrome_options=chrome_options)
 		driver.get(self.host_url)
 		cookies = driver.get_cookies()
 		driver.quit()
 
 		with open(COOKIE_NAME, "w") as fp:
-		    json.dump(cookies, fp)	# json格式保存
+		    json.dump(cookies, fp)
 
 		self.set_cookie()
 
@@ -54,8 +62,7 @@ class Login(object):
 		'''
 		jar = RequestsCookieJar()
 		with open(COOKIE_NAME, "r", encoding="utf8") as fp:
-			# print(fp.readlines())
-			# readlines()--文件指针会在文件末尾,再执行只会读到[]
+			# readlines(),读取之后,文件指针会在文件末尾,再执行只会读到空[]
 			if fp.readlines() == []:
 				log_str("cookie为空,请设置'COOKIE_UPDATE_ENABLED'以更新cookie")
 				exit()

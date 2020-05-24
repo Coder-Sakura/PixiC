@@ -6,8 +6,6 @@ author: coder_sakura
 """
 import time
 import json
-import queue
-import threading
 import math
 from lxml import etree
 
@@ -21,7 +19,6 @@ class Bookmark(object):
 		self.base_request = Downloader.baseRequest
 
 		self.db = Downloader.db
-		self.db.create_db()
 		self.selectMaxXpath = """//span[@class="count-badge"]/text()"""
 		self.selectPidXpath = """//li[contains(@class,"image-item")]//img/following-sibling::div[1]/@data-id"""
 
@@ -41,7 +38,13 @@ class Bookmark(object):
 		:params p: 页数
 		:return : 第p页收藏的源码
 		"""
-		return self.base_request(options={"url":self.bookmark},params={"p":int(p)}).text
+		try:
+			resp = self.base_request(options={"url":self.bookmark},params={"p":int(p)})
+		except Exception as e:
+			log_str("bookmark:获取失败 {}".format(e))
+			return None
+		else:
+			return resp.text
 
 	def get_pid(self,obj):
 		"""
@@ -59,7 +62,12 @@ class Bookmark(object):
 			若最新收藏的10条插画id有一条在数据库中,则跳过;若不在则更新
 			本意上是以最快10分钟内收藏10条新作品这个标准作为界限
 		"""
-		a = self.get_pid(etree.HTML(self.get_html(1)))[:10]
+		r = self.get_html(1)
+		if r == None:
+			return False
+		else:
+			a = self.get_pid(etree.HTML(r))[:10]
+
 		for i in a:
 			if self.db.check_illust(i,table="bookmark")[0] == False:
 				log_str("{} 进行更新".format(__file__.split("\\")[-1].split(".")[0]))

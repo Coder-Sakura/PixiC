@@ -15,6 +15,8 @@ db = Downloader.db
 NO_DATA_MESSAGE = "There Is No Data Corresponding To This Pid"
 # 没有该标签的作品
 NO_TAG_MESSAGE = "There Is No Illusts Corresponding To The Tag"
+# 参数错误
+PARAM_ERROR = "Params Error,Try Again"
 # 内部错误
 INTERNAL_ERROR_MESSAGE = "Internal Error"
 
@@ -29,19 +31,34 @@ def index():
 def get_info():
 	if request.method == "POST":
 		pid = request.form.get('pid',None)
+
+		# pid为int类型以外的
+		try:
+			int(pid)
+		except:
+			return jsonify({'result':{"error":False,"message":PARAM_ERROR}})
+			
+		# 无传参pid,pid长度异常
 		if pid == None or len(pid) > 20:
-			return jsonify({'result':{"error":False,"message":NO_DATA_MESSAGE}})
+			return jsonify({'result':{"error":False,"message":PARAM_ERROR}})
+
+		# pid小于0
+		if int(pid) < 0:
+			return jsonify({'result':{"error":False,"message":PARAM_ERROR}})
+
+		print(pid)
 		try:
 			res = db.select_illust(pid)
-			res["reverse_url"] = db.pixiv_re_proxy(res)
-			print("res",res)
 			if res == "" or res == None:
 				res = {"error":False,"message":NO_DATA_MESSAGE}
 			else:
+				res["reverse_url"] = db.pixiv_re_proxy(res)
+				print("res",res)
 				# 删除不必要的字段
 				del res["urls"],res["path"]
 				res["error"],res["message"] = False,""
 		except Exception as e:
+			print(e)
 			res = {"error":True,"message":INTERNAL_ERROR_MESSAGE}
 		finally:	
 			return jsonify({'result':res})
@@ -52,24 +69,33 @@ def p_random():
 	# extra指定tag
 	# 单tag: ta .method == "POST":
 	if request.method == "POST":
-		num = int(request.form.get('num',0))
+		num = request.form.get('num',0)
 		ex = request.form.get('extra',None)
-		# num必要
-		if num == 0:
-			1/0
-			return "", 500
 
-		if num > RANDOM_LIMIT:
+		# num为int类型以外的类型
+		try:
+			int(num)
+		except:
+			return jsonify({'result':{"error":False,"message":PARAM_ERROR}})
+			
+		# num小于等于0
+		if int(num) <= 0:
+			return jsonify({'result':{"error":False,"message":PARAM_ERROR}})
+
+
+		# 大于单次返回限制
+		if int(num) > RANDOM_LIMIT:
 			num = 1
 		print(num,ex)
+
 		res = []
-		for i in range(num):
+		for i in range(int(num)):
 			r = db.random_illust(extra=ex)
-			r["reverse_url"] = db.pixiv_re_proxy(r)
 			if r == None:
 				return jsonify({'result':{"error":False,"message":NO_TAG_MESSAGE}})
+			r["reverse_url"] = db.pixiv_re_proxy(r)
 			res.append(r)
-		print(res["pid"])
+		print(res)
 		return jsonify({'result':res})
 
 # 调用则向数据库插入数据

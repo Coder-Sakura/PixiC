@@ -191,7 +191,7 @@ class Down(object):
 			path = "None"
 			data["path"] = path
 			log_str("id:{} 作品不满足条件,不下载".format(pid))
-		self.db.updata_illust(data)
+		# self.db.updata_illust(data)
 
 		return data
 
@@ -253,11 +253,14 @@ class Down(object):
 		# 正序查找,获取"."前面数字的索引 | ['i', 'v', '0'] 取最后一个
 		# n记录original中变化页数的索引
 		n = [i-1 for i in range(len(original)-1) if original[i] == "."][-1]
-		# 倒序切分1次
-		end = original.rsplit(original[n],1)
+		
+		# 倒序切分1次,以p0的0进行切分
+		# end = original.rsplit(original[n],1)
 		
 		for i in range(0,int(pageCount)):
-			new_original = "{}".join(end).format(i)
+			# 用join方法将页数合成进新的url
+			# new_original = "{}".join(end).format(i)
+			new_original = original.replace(original[n],str(i))
 			name = "{}-{}.{}".format(data["pid"],i,new_original.split(".")[-1])
 			illustPath = os.path.join(path_,name)
 

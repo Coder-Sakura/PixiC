@@ -31,15 +31,8 @@ class db_client(object):
 		4. 队列中,insert_illust 满足插入条件,向pixiv表中插入该pid的记录
 	"""
 
-	def __init__(self):
-		pass
+	def __init__(self,thread_num=8):
 		log_str("数据库连接池实例化...")
-		# self.create_db if flag == True
-	
-	def create_db(self,thread_num=16):
-		"""
-		:params thread_num: 数据库连接池线程数
-		"""
 		try:
 			self.pool = PooledDB(
 			    pymysql,thread_num,host=DB_HOST,user=DB_USER,
@@ -47,7 +40,7 @@ class db_client(object):
 		except pymysql.err.OperationalError as e:
 			log_str("请确保Mysql在运行/配置好\n{}".format(e))
 			exit()
-		log_str("数据库连接池完成...")
+		# self.create_db if flag == True
 
 	def get_conn(self):
 		"""
@@ -55,7 +48,7 @@ class db_client(object):
 		res = function()
 		res[0][select_name]
 		"""
-		conn = self.pool.connection() # 以后每次需要数据库连接就是用connection()函数获取连接就好了
+		conn = self.pool.connection() # 需要数据库连接就是用connection()函数获取连接就好了
 		cur = conn.cursor(DictCursor)
 		return conn,cur
 
@@ -67,6 +60,7 @@ class db_client(object):
 		判断pxusers表是否含有该画师信息
 		无 --> 插入数据
 		有 --> null
+		:params u: 用户数据
 		:return: latest_id
 		出现mysql 1366报错,按照https://blog.csdn.net/qq_31122833/article/details/83992085解决
 		"""
@@ -148,8 +142,8 @@ class db_client(object):
 	def check_illust(self,pid,table="pixiv"):
 		"""
 		查询数据库中是否有该id的作品
-		:return : 是否存在该记录,path
 		path为下载地址,不存在该记录时为None
+		:return : 是否存在该记录,path
 		"""
 		conn,cur = self.get_conn()
 		# 查询id sql
@@ -222,8 +216,7 @@ class db_client(object):
 			cur.execute(sql,data)
 			conn.commit()
 		except Exception as e:
-			log_str(e)
-			log_str(u)
+			log_str("更新作品:{} 出错,{}".format(u["pid"],e))
 			conn.rollback()
 			return False
 		else:
@@ -251,7 +244,7 @@ class db_client(object):
 	def random_illust(self,table="pixiv",extra=None):
 		"""
 		:params table: 指定哪个表
-		:params extra: ["原创","碧蓝航线"] 最多2个,额外指定tag
+		:params extra: 原创,碧蓝航线 最多2个,额外指定tag
 		随机返回1条数据,根据extra返回对应的标签
 		不返回urls,path,t2.id等非必要字段或中间产物
 		"""

@@ -1,5 +1,4 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# coding=utf8
 
 """
 一个基于thread和queue的线程池，以任务为队列元素，动态创建线程，重复利用线程，

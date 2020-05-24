@@ -6,9 +6,6 @@ author: coder_sakura
 """
 import time
 import json
-import queue
-import threading
-
 
 from downer import Downloader
 from logstr import log_str
@@ -30,7 +27,6 @@ class Crawler(object):
 		self.all_illust_url = "https://www.pixiv.net/ajax/user/{}/profile/all"
 		self.file_manager = Downloader.file_manager
 		self.db = Downloader.db
-		self.db.create_db()
 
 	def get_page_users(self,offset):
 		"""
@@ -132,13 +128,17 @@ class Crawler(object):
 				log_str("该作品{}已被删除,或作品ID不存在.".format(pid))
 				return
 
+			# 数据库无该记录
 			if isExists == False:
-				# 数据库无该记录
 				res = self.db.insert_illust(info)
 				if res == False:
 					log_str("插入{}失败".format(pid))
 				else:
 					log_str("插入{}成功".format(pid))
+			# 数据库有该记录
+			else:
+				# 更新记录
+				self.db.updata_illust(info)
 
 	def run(self):
 		log_str("{} 开始轮询,获取关注列表...".format(self.__class__.__name__))

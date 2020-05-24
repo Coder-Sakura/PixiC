@@ -23,7 +23,7 @@ class Scheduler(object):
 		"""
 		api
 		"""
-		db.create_db(thread_num=API_THREAD)
+		# db.create_db(thread_num=API_THREAD)
 		app.run(API_HOST,API_PORT)
 
 	def scheduler_bookmark(self,limit=BOOKMARK_CYCLE):
