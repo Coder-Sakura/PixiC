@@ -81,13 +81,17 @@ class Crawler(object):
 		"""
 		u["path"] = self.file_manager.mkdir_painter(u)
 		illust_url = self.all_illust_url.format(u["uid"])
-		u_json = json.loads(self.base_request({"url":illust_url}).text)["body"]
-		i = u_json["illusts"]
-		m = u_json["manga"]
-		# 列表推导式合并取keys,转为list
-		user_illust_list = list([dict(i) if len(m) == 0 else dict(i,**m)][0].keys())
-		total = len(user_illust_list)
-		return user_illust_list,total
+		try:
+			u_json = json.loads(self.base_request({"url":illust_url}).text)["body"]
+			i = u_json["illusts"]
+			m = u_json["manga"]
+			# 列表推导式合并取keys,转为list
+			user_illust_list = list([dict(i) if len(m) == 0 else dict(i,**m)][0].keys())
+		except Exception as e:
+			log_str("crwaler:获取画师数据出错 {}".format(e))
+			return []
+		else:
+			return user_illust_list
 
 	def thread_by_illust(self,*args):
 		pid = args[0]
@@ -152,12 +156,12 @@ class Crawler(object):
 		try:
 			pool = ThreadPool(8)
 			for u in u_list:
-				all_illust,total = self.get_user_illust(u)
+				all_illust = self.get_user_illust(u)
 				latest_id = self.db.check_user(u)
 				d_total = self.db.get_total(u)
 				# log_str("{}|{} {} {} {}".format(u["uid"],u["latest_id"],latest_id,d_total,total))
 				log_str("当前画师: {}(pid:{}) |作品数: {}".format(u["userName"],u["uid"],len(all_illust)))
-				if u["latest_id"] >= latest_id and d_total < total:
+				if u["latest_id"] >= latest_id and d_total < len(all_illust):
 					# 满足条件更新
 					log_str("更新{}|{} {} {} {}".format(u["uid"],u["latest_id"],latest_id,d_total,total))
 					self.db.update_latest_id(u)
