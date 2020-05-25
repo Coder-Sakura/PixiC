@@ -15,44 +15,34 @@ from thread_pool import *
 
 class Bookmark(object):
 	def __init__(self):
-		self.bookmark = 'https://www.pixiv.net/bookmark.php'
+		self.user_id = Downloader.client.user_id
 		self.base_request = Downloader.baseRequest
-
+		
+		self.bookmark_url = "https://www.pixiv.net/ajax/user/{}/illusts/bookmarks".format(self.user_id)
 		self.db = Downloader.db
-		self.selectMaxXpath = """//span[@class="count-badge"]/text()"""
-		self.selectPidXpath = """//li[contains(@class,"image-item")]//img/following-sibling::div[1]/@data-id"""
 
-	def get_total_page(self):
+	def get_page_bookmark(self,offset):
 		"""
-		获取最大页数进行处理,向上取整
-		9/4=3
-		:return :最大页数
+		根据offset和limit获取收藏插画的pid
+		:params offset: 偏移量
+		:return :对应offset和limit的pid列表,int类型
 		"""
-		obj = etree.HTML(self.base_request(options={"url":self.bookmark}).text)
-		n = obj.xpath(self.selectMaxXpath)[0][:-1]
-		log_str("共收藏{}张插画".format(n))
-		return math.ceil(int(n)/20)
-
-	def get_html(self,p):
-		"""
-		:params p: 页数
-		:return : 第p页收藏的源码
-		"""
+		params = {
+			"tag":"",
+			"offset":offset,
+			"limit":100,
+			"rest":"show",			
+		}
 		try:
-			resp = self.base_request(options={"url":self.bookmark},params={"p":int(p)})
+			r = json.loads(self.base_request({"url":self.bookmark_url},params=params).text)
+			res = r["body"]["works"]
+			total = r["body"]["total"]
+			illusts_pid = [int(i["illustId"]) for i in res]
 		except Exception as e:
-			log_str("bookmark:获取失败 {}".format(e))
-			return None
+			log_str("bookmark获取收藏出错: 第{}-{}张失败".format(offset,offset+100))
+			return None,None
 		else:
-			return resp.text
-
-	def get_pid(self,obj):
-		"""
-		获取obj对象中的pid,一页20个,将获取的pid转为int类型
-		当小于20个时,一般是作品被删除,其次才是网站结构发生改变
-		:return : pid列表
-		"""
-		return [int(i) for i in obj.xpath(self.selectPidXpath)]
+			return illusts_pid,total
 
 	def check_update(self):
 		"""
@@ -62,19 +52,20 @@ class Bookmark(object):
 			若最新收藏的10条插画id有一条在数据库中,则跳过;若不在则更新
 			本意上是以最快10分钟内收藏10条新作品这个标准作为界限
 		"""
-		r = self.get_html(1)
-		if r == None:
+		res = self.get_page_bookmark(0)
+		if res[0] == None:
 			return False
 		else:
-			a = self.get_pid(etree.HTML(r))[:10]
-
-		for i in a:
-			if self.db.check_illust(i,table="bookmark")[0] == False:
-				log_str("{} 进行更新".format(__file__.split("\\")[-1].split(".")[0]))
-				return True
-		else:
-			log_str("{} 暂不更新".format(__file__.split("\\")[-1].split(".")[0]))
-			return False
+			# total = res[1]
+			# if 
+			# 验证前十张
+			for i in res[:10]:
+				if self.db.check_illust(i,table="bookmark")[0] == False:
+					log_str("{} 进行更新".format(__file__.split("\\")[-1].split(".")[0]))
+					return True
+			else:
+				log_str("{} 暂不更新".format(__file__.split("\\")[-1].split(".")[0]))
+				return False
 
 	def thread_by_illust(self,*args):
 		pid = args[0]
@@ -99,31 +90,38 @@ class Bookmark(object):
 					log_str("插入{}失败".format(pid))
 				else:
 					log_str("插入{}成功".format(pid))
+			else:
+				# 更新记录
+				self.db.updata_illust(info)
 
 	def run(self):
 		log_str("{} 开始轮询,获取收藏列表".format(self.__class__.__name__))
 		# 更新机制判定
-		if self.check_update() == False:
-			log_str("{} 进入休眠".format(self.__class__.__name__))
-			return
+		# if self.check_update() == False:
+		# 	log_str("{} 进入休眠".format(self.__class__.__name__))
+		# 	return
 
 		try:
-			max_num = self.get_total_page()
+			offset = 0
 			pool = ThreadPool(8)
 
-			for i in range(1,max_num+1):
-				try:
-					pid_list = self.get_pid(etree.HTML(self.get_html(i)))
-				except:
-					log_str("当前收藏页: 第{}页失败".format(i))
+			while True:
+				pid_list = self.get_page_bookmark(offset)[0]
+				# 获取异常返回None
+				if pid_list == None:
 					continue
-
-				log_str("当前收藏页: 第{}页成功".format(i))
 				
+				# 无收藏返回[]
+				if pid_list == []:
+					break
+
+				log_str("当前收藏: 第{}-{}张获取成功,共{}张可用".format(offset,offset+100,len(pid_list)))
 				for pid in pid_list:
 					pool.put(self.thread_by_illust,(pid,),callback)
 
-				time.sleep(3)
+				offset += 100
+
+				time.sleep(1)
 		except Exception as e:
 			log_str("Exception",e)
 		finally:

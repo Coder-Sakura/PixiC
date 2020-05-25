@@ -211,13 +211,10 @@ class Down(object):
 
 		if pageCount == 1:
 			if illustType == 2:
-				# log_str("{} {} {}".format(pageCount,illustType,"动图"))
 				self.illustGif(data)
 			else:
 				self.illustSingle(data)
-				# log_str("{} {} {}".format(pageCount,illustType,"单图"))
 		else:
-			# log_str("{} {} {}".format(pageCount,illustType,"多图"))
 			self.illustMulti(data)
 
 	def illustSingle(self,data):
@@ -233,7 +230,8 @@ class Down(object):
 
 		if os.path.exists(illustPath) == True and os.path.getsize(illustPath) > 1000:
 			# 作品存在且大于1000字节,为了避免58字节错误页面和其他错误页面
-			log_str("{}已存在".format(name))
+			# log_str("{}已存在".format(name))
+			pass
 		else:
 			c = self.baseRequest(options={"url":original}).content
 			size = self.downSomething(illustPath,c)
@@ -260,12 +258,13 @@ class Down(object):
 		for i in range(0,int(pageCount)):
 			# 用join方法将页数合成进新的url
 			# new_original = "{}".join(end).format(i)
-			new_original = original.replace(original[n],str(i))
+			new_original = original[::-1].replace(original[n],str(i),1)[::-1]
 			name = "{}-{}.{}".format(data["pid"],i,new_original.split(".")[-1])
 			illustPath = os.path.join(path_,name)
 
 			if os.path.exists(illustPath) == True and os.path.getsize(illustPath) > 1000:
-				log_str("{}已存在".format(name))
+				# log_str("{}已存在".format(name))
+				pass
 			else:
 				c = self.baseRequest(options={"url":new_original}).content
 				size = self.downSomething(illustPath,c)
@@ -283,7 +282,8 @@ class Down(object):
 		illustPath = os.path.join(path_,name)
 
 		if os.path.exists(illustPath) == True and os.path.getsize(illustPath) > 1000:
-			log_str("{}已存在".format(name))
+			# log_str("{}已存在".format(name))
+			pass
 		else:
 			z = json.loads(self.baseRequest(options={"url":zipInfoUrl}).text)
 			zip_url = z["body"]["originalSrc"]

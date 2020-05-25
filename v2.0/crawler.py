@@ -38,7 +38,14 @@ class Crawler(object):
 			"limit":100,
 			"rest":"show",			
 		}
-		return json.loads(self.base_request({"url":self.follw_url},params=params).text)['body']['users']
+		try:
+			r = json.loads(self.base_request({"url":self.follw_url},params=params).text)
+			res = r['body']['users']
+		except Exception as e:
+			log_str("crawler获取画师出错,第{}-{}位".foramt(offset,offset+100))
+			return []
+		else:
+			return res
 
 	def get_users(self):
 		"""
@@ -50,6 +57,9 @@ class Crawler(object):
 
 		while True:
 			u_list = self.get_page_users(offset)
+
+			if u_list == []:
+				continue
 
 			for u in u_list:
 				user_info = {}
@@ -66,7 +76,7 @@ class Crawler(object):
 
 				users_info_list.append(user_info)
 
-			if len(u_list) != 100:
+			if 0 < len(u_list) < 100:
 				break
 
 			offset += 100
@@ -115,34 +125,33 @@ class Crawler(object):
 			pass
 
 		if isExists == False and path != None:
-			# 下载了,但数据库有记录
+			# 下载了,但数据库没有记录
 			# 不可能发生,下载了有path,也得insert才有数据,不然查询到的path应该是None
 			pass
 		"""
 
-		if path == None:
-			# 会根据每次请求的收藏数来进行判断是否下载
-			try:
-				info = Downloader.get_illust_info(pid)
-			except Exception as e:
-				log_str("{}请求错误:{}".format(pid,e))
-				return 
+		# 会根据每次请求的收藏数来进行判断是否下载
+		try:
+			info = Downloader.get_illust_info(pid)
+		except Exception as e:
+			log_str("{}请求错误:{}".format(pid,e))
+			return 
 
-			if info == None:
-				log_str("该作品{}已被删除,或作品ID不存在.".format(pid))
-				return
+		if info == None:
+			log_str("该作品{}已被删除,或作品ID不存在.".format(pid))
+			return
 
-			# 数据库无该记录
-			if isExists == False:
+		# 数据库无该记录
+		if isExists == False:
+			if path == None:
 				res = self.db.insert_illust(info)
 				if res == False:
 					log_str("插入{}失败".format(pid))
 				else:
 					log_str("插入{}成功".format(pid))
-			# 数据库有该记录
-			else:
-				# 更新记录
-				self.db.updata_illust(info)
+		# 数据库有该记录
+		else:
+			self.db.updata_illust(info)
 
 	def run(self):
 		log_str("{} 开始轮询,获取关注列表...".format(self.__class__.__name__))
@@ -163,7 +172,7 @@ class Crawler(object):
 				log_str("当前画师: {}(pid:{}) |作品数: {}".format(u["userName"],u["uid"],len(all_illust)))
 				if u["latest_id"] >= latest_id and d_total < len(all_illust):
 					# 满足条件更新
-					log_str("更新{}|{} {} {} {}".format(u["uid"],u["latest_id"],latest_id,d_total,total))
+					log_str("更新{}|{} {} {} {}".format(u["uid"],u["latest_id"],latest_id,d_total,len(all_illust)))
 					self.db.update_latest_id(u)
 
 					for pid in all_illust:
@@ -178,6 +187,7 @@ class Crawler(object):
 			pool.close()
 		except Exception as e:
 			log_str("Exception",e)
+			pool.close()
 		finally:
 			pool.close()
 		log_str("{} 进入休眠".format(__file__.split("\\")[-1].split(".")[0]))

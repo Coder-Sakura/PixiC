@@ -32,13 +32,13 @@ COOKIE_UPDATE_ENABLED = False
 
 # ======控制开关========
 # 关注画师爬虫控制开关
-PIXIV_CRAWLER_ENABLED = False
+PIXIV_CRAWLER_ENABLED = True
 
 # 收藏作品爬虫控制开关
 PIXIV_BOOKMARK_ENABLED = False
 
 # Api控制开关
-PIXIV_API_ENABLED = True
+PIXIV_API_ENABLED = False
 # ================================================
 
 
