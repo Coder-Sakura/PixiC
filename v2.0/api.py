@@ -1,5 +1,6 @@
 import os
 import json
+import time
 from flask import Flask,request,jsonify
 
 from downer import Downloader
@@ -24,7 +25,7 @@ INTERNAL_ERROR_MESSAGE = "Internal Error"
 # 首页
 @app.route('/api/v2')
 def index():
-	return "<h2>Welcome To PixivCrawler API!</h2>"
+	return "<h2>Now it's {} Welcome To PixiC API!</h2>".format(time.strftime("%Y-%m-%d %H:%M:%S"))
 
 # 查询指定pid的信息
 @app.route('/api/v2/get-info',methods=['GET','POST'])

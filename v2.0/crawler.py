@@ -42,7 +42,7 @@ class Crawler(object):
 			r = json.loads(self.base_request({"url":self.follw_url},params=params).text)
 			res = r['body']['users']
 		except Exception as e:
-			log_str("crawler获取画师出错,第{}-{}位".foramt(offset,offset+100))
+			log_str("Crawler:获取画师出错,第{}-{}位".foramt(offset,offset+100))
 			return []
 		else:
 			return res
@@ -68,7 +68,7 @@ class Crawler(object):
 
 				if u["illusts"] == []:
 					user_info["latest_id"] = -1
-					log_str("{}无作品...".format(u["userId"]))
+					log_str("{}:无作品...".format(u["userId"]))
 					# 无作品不做动作
 					continue
 				else:
@@ -98,7 +98,7 @@ class Crawler(object):
 			# 列表推导式合并取keys,转为list
 			user_illust_list = list([dict(i) if len(m) == 0 else dict(i,**m)][0].keys())
 		except Exception as e:
-			log_str("crwaler:获取画师数据出错 {}".format(e))
+			log_str("Crwaler:获取画师数据出错 {}".format(e))
 			return []
 		else:
 			return user_illust_list
@@ -134,7 +134,7 @@ class Crawler(object):
 		try:
 			info = Downloader.get_illust_info(pid)
 		except Exception as e:
-			log_str("{}请求错误:{}".format(pid,e))
+			log_str("{}:请求错误:{}".format(pid,e))
 			return 
 
 		if info == None:
@@ -143,24 +143,24 @@ class Crawler(object):
 
 		# 数据库无该记录
 		if isExists == False:
-			if path == None:
-				res = self.db.insert_illust(info)
-				if res == False:
-					log_str("插入{}失败".format(pid))
-				else:
-					log_str("插入{}成功".format(pid))
+			res = self.db.insert_illust(info)
+			if res == False:
+				log_str("插入{}失败".format(pid))
+			else:
+				log_str("插入{}成功".format(pid))
 		# 数据库有该记录
 		else:
 			self.db.updata_illust(info)
 
 	def run(self):
-		log_str("{} 开始轮询,获取关注列表...".format(self.__class__.__name__))
+		log_str("{}:开始轮询,获取关注列表...".format(self.__class__.__name__))
 		try:
 			u_list = self.get_users()
 		except Exception as e:
-			log_str("{} 获取关注列表出错".format(__file__.split("\\")[-1].split(".")[0]))
-			log_str("{} 进入休眠".format(__file__.split("\\")[-1].split(".")[0]))
-		log_str("{} 成功获取关注列表.共{}位关注用户".format(self.__class__.__name__,len(u_list)))
+			log_str("{}:获取关注列表出错".format(__file__.split("\\")[-1].split(".")[0]))
+			log_str("{}:进入休眠".format(__file__.split("\\")[-1].split(".")[0]))
+		else:
+			log_str("{}:成功获取关注列表.共{}位关注用户".format(self.__class__.__name__,len(u_list)))
 
 		try:
 			pool = ThreadPool(8)
@@ -168,20 +168,19 @@ class Crawler(object):
 				all_illust = self.get_user_illust(u)
 				latest_id = self.db.check_user(u)
 				d_total = self.db.get_total(u)
-				# log_str("{}|{} {} {} {}".format(u["uid"],u["latest_id"],latest_id,d_total,total))
-				log_str("当前画师: {}(pid:{}) |作品数: {}".format(u["userName"],u["uid"],len(all_illust)))
+				# log_str("当前画师:{}(pid:{}) |作品数: {}".format(u["userName"],u["uid"],len(all_illust)))
 				if u["latest_id"] >= latest_id and d_total < len(all_illust):
 					# 满足条件更新
-					log_str("更新{}|{} {} {} {}".format(u["uid"],u["latest_id"],latest_id,d_total,len(all_illust)))
+					log_str("更新画师:{}(pid:{}) |作品数: {} 最新作品: {}".format(u["userName"],u["uid"],len(all_illust),u["latest_id"]))
+					# log_str("更新:{}|{} {} {} {}".format(u["uid"],u["latest_id"],latest_id,d_total,len(all_illust)))
 					self.db.update_latest_id(u)
 
 					for pid in all_illust:
 						pool.put(self.thread_by_illust,(pid,),callback)
 
 					time.sleep(3)
-					# self.threa_scheduler(u,all_illust)
 				else:
-					# print("不更新")
+					log_str("当前画师:{}(pid:{}) |作品数: {}".format(u["userName"],u["uid"],len(all_illust)))
 					continue
 
 			pool.close()
@@ -190,7 +189,7 @@ class Crawler(object):
 			pool.close()
 		finally:
 			pool.close()
-		log_str("{} 进入休眠".format(__file__.split("\\")[-1].split(".")[0]))
+		log_str("{}:进入休眠".format(__file__.split("\\")[-1].split(".")[0]))
 
 
 # if __name__ == '__main__':
