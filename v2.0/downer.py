@@ -9,6 +9,7 @@ import requests
 import json
 import zipfile
 import imageio
+import time
 # 强制取消警告
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
@@ -77,7 +78,7 @@ class Down(object):
 					cookies = self.jar,
 					headers = base_headers,
 					verify = False,
-					timeout = 15,
+					timeout = 10,
 				)
 			return response
 		except  Exception as e:
@@ -85,7 +86,7 @@ class Down(object):
 				return self.baseRequest(options,data,params,retry_num-1)
 			else:
 				log_str("baseRequest:%s"%e)
-				log_str("baseRequest:代理无效/网络错误")
+				raise Exception("baseRequest:代理无效/网络错误")
 
 	def get_illust_info(self,pid,extra=None):
 		'''
@@ -190,8 +191,7 @@ class Down(object):
 		else:
 			path = "None"
 			data["path"] = path
-			log_str("id:{} 作品不满足条件,不下载".format(pid))
-		# self.db.updata_illust(data)
+			# log_str("id:{} 作品不满足条件,不下载".format(pid))
 
 		return data
 
@@ -236,6 +236,7 @@ class Down(object):
 			c = self.baseRequest(options={"url":original}).content
 			size = self.downSomething(illustPath,c)
 			log_str("{}下载成功! 大小:{}".format(name,self.size2Mb(size)))
+			time.sleep(1)
 
 	def illustMulti(self,data):
 		"""
@@ -258,7 +259,8 @@ class Down(object):
 		for i in range(0,int(pageCount)):
 			# 用join方法将页数合成进新的url
 			# new_original = "{}".join(end).format(i)
-			new_original = original[::-1].replace(original[n],str(i),1)[::-1]
+			# 倒序替换时,插入的页数也需要反转str(i)[::-1]
+			new_original = original[::-1].replace(original[n],str(i)[::-1],1)[::-1]
 			name = "{}-{}.{}".format(data["pid"],i,new_original.split(".")[-1])
 			illustPath = os.path.join(path_,name)
 
@@ -269,6 +271,7 @@ class Down(object):
 				c = self.baseRequest(options={"url":new_original}).content
 				size = self.downSomething(illustPath,c)
 				log_str("{}下载成功! 大小:{}".format(name,self.size2Mb(size)))
+				time.sleep(1)
 
 	def illustGif(self,data):
 		path_ = data["path"]
@@ -311,6 +314,7 @@ class Down(object):
 			# 删除解压出来的图片
 			for j in files:
 				os.remove(os.path.join(path_,j))
+			time.sleep(1)
 
 	def downSomething(self,path,content):
 		# name考虑切分,或者传参进来
