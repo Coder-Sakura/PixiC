@@ -35,7 +35,7 @@ COOKIE_UPDATE_ENABLED = False
 PIXIV_CRAWLER_ENABLED = True
 
 # 收藏作品爬虫控制开关
-PIXIV_BOOKMARK_ENABLED = False
+PIXIV_BOOKMARK_ENABLED = True
 
 # Api控制开关
 PIXIV_API_ENABLED = False
@@ -43,15 +43,15 @@ PIXIV_API_ENABLED = False
 
 
 # ===============检测周期&最低限制=================
-# 关注-画师作品检测周期,单位秒,默认1800秒
-USERS_CYCLE = 1800
+# 关注-画师作品检测周期,单位秒,默认43200秒,12小时
+USERS_CYCLE = 43200
 # USERS_CYCLE = 600
 
 # 关注-最低收藏限制,高于LIMIT才会下载,默认3000
 USERS_LIMIT = 3000
 
-# 收藏-作品检测周期,单位秒,默认1800秒
-BOOKMARK_CYCLE = 1800
+# 收藏-作品检测周期,单位秒,默认7200秒,2小时
+BOOKMARK_CYCLE = 7200
 # BOOKMARK_CYCLE = 300
 
 # 收藏-最低收藏限制,高于LIMIT才会下载,默认为0

@@ -196,7 +196,7 @@ class db_client(object):
 
 	def updata_illust(self,u,table="pixiv"):
 		"""
-		更新作品数据,主要是浏览数,收藏数,评论数,喜欢数
+		更新作品数据,主要是浏览数,收藏数,评论数,喜欢数,path
 		:params u:作品数据
 		:return :
 		主要更新 viewCount bookmarkCount commentCount likeCount
@@ -207,10 +207,10 @@ class db_client(object):
 		# 更新后 1  1  1  1 81265370
 		# 快速查询 SELECT viewCount,bookmarkCount,likeCount,commentCount,pid FROM pixiv WHERE id=53312;
 		sql = """UPDATE {} """.format(table) + """SET viewCount=%s,\
-				bookmarkCount=%s,likeCount=%s,commentCount=%s WHERE pid=%s"""
+				bookmarkCount=%s,likeCount=%s,commentCount=%s,path=%s WHERE pid=%s"""
 		# 更新数据
 		data = (
-			u["viewCount"],u["bookmarkCount"],u["likeCount"],u["commentCount"],u["pid"]
+			u["viewCount"],u["bookmarkCount"],u["likeCount"],u["commentCount"],u["path"],u["pid"]
 			)
 		try:
 			cur.execute(sql,data)

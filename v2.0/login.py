@@ -38,7 +38,7 @@ class Login(object):
 		'''
 		chrome_options = webdriver.ChromeOptions()
 		# 静默模式可能会导致获取不了cookie
-		# chrome_options.add_argument('--headless')	
+		chrome_options.add_argument('--headless')	
 		chrome_options.add_argument('--no-sandbox')
 		chrome_options.add_argument('--start-maximized')
 		# 取消警告语
