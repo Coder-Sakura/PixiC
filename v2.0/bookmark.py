@@ -4,9 +4,9 @@
 time: 2020-05-11
 author: coder_sakura
 """
-import time
-import json
 import math
+import json
+import time
 
 from downer import Downloader
 from logstr import log_str
@@ -52,14 +52,15 @@ class Bookmark(object):
 			若最新收藏的10条插画id有一条在数据库中,则跳过;若不在则更新
 			本意上是以最快10分钟内收藏10条新作品这个标准作为界限
 		"""
-		res = self.get_page_bookmark(0)
+		# 数据库开关关闭,直接更新
+		if hasattr(self.db,"pool") == False:
+			return True
 
+		res = self.get_page_bookmark(0)
 		if res[0] == None:
 			log_str(UPDATE_CHECK_ERROR_INFO.format(self.class_name))
 			return False
 		else:
-			# total = res[1]
-			# if 
 			# 验证前十张
 			for pid in res[0][:10]:
 				if self.db.check_illust(pid,table="bookmark")[0] == False:
@@ -71,9 +72,6 @@ class Bookmark(object):
 
 	def thread_by_illust(self,*args):
 		pid = args[0]
-		isExists,path = self.db.check_illust(pid,table="bookmark")
-
-		# 会根据每次请求的收藏数来进行判断是否下载
 		try:
 			info = Downloader.get_illust_info(pid,extra="bookmark")
 		except Exception as e:
@@ -84,6 +82,11 @@ class Bookmark(object):
 			log_str(ILLUST_EMPTY_INFO.format(self.class_name,pid))
 			return
 
+		# 数据库开关关闭
+		if hasattr(self.db,"pool") == False:
+			return 
+
+		isExists,path = self.db.check_illust(pid,table="bookmark")
 		# 数据库无该记录
 		if isExists == False:
 			res = self.db.insert_illust(info,table="bookmark")

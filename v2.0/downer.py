@@ -5,17 +5,17 @@ time: 2020-05-11
 author: coder_sakura
 """
 import os
-import requests
 import json
-import zipfile
 import imageio
 import time
+import zipfile
+import requests
 # 强制取消警告
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
 from config import USERS_LIMIT,BOOKMARK_LIMIT
-from db import DBclient
+from db import DBClient
 from folder import file_manager
 from logstr import log_str
 from login import client
@@ -27,7 +27,7 @@ class Down(object):
 		self.client = client
 		self.jar = client.set_cookie()
 		self.file_manager = file_manager
-		self.db = DBclient
+		self.db = DBClient
 		self.headers = {
 			# "Connection": "keep-alive",
 			"Host": "www.pixiv.net",	# 0416添加

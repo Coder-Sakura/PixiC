@@ -4,8 +4,8 @@
 time: 2020-05-11
 author: coder_sakura
 """
-import time
 import json
+import time
 
 from downer import Downloader
 from logstr import log_str
@@ -104,9 +104,6 @@ class Crawler(object):
 			return user_illust_list
 
 	def thread_by_illust(self,*args):
-		pid = args[0]
-		isExists,path = self.db.check_illust(pid)
-
 		"""
 		if isExists == False and path == None:
 			# 数据库没有记录也没有下载,
@@ -128,8 +125,7 @@ class Crawler(object):
 			# 不可能发生,下载了有path,也得insert才有数据,不然查询到的path应该是None
 			pass
 		"""
-
-		# 会根据每次请求的收藏数来进行判断是否下载
+		pid = args[0]
 		try:
 			info = Downloader.get_illust_info(pid)
 		except Exception as e:
@@ -140,6 +136,11 @@ class Crawler(object):
 			log_str(ILLUST_EMPTY_INFO.format(self.class_name,pid))
 			return
 
+		# 数据库开关关闭
+		if hasattr(self.db,"pool") == False:
+			return 
+
+		isExists,path = self.db.check_illust(pid)
 		# 数据库无该记录
 		if isExists == False:
 			res = self.db.insert_illust(info)
@@ -165,15 +166,18 @@ class Crawler(object):
 			pool = ThreadPool(8)
 			for u in u_list:
 				all_illust = self.get_user_illust(u)
-				latest_id = self.db.check_user(u)
-				d_total = self.db.get_total(u)
-				# log_str("当前画师:{}(pid:{}) |作品数: {}".format(u["userName"],u["uid"],len(all_illust)))
-				
+				if hasattr(self.db,"pool"):
+					latest_id = self.db.check_user(u)
+					d_total = self.db.get_total(u)
+				else:
+					latest_id,d_total = 0,0
+
 				if u["latest_id"] >= latest_id and d_total < len(all_illust):
 					# 满足条件更新
 					log_str(UPDATE_USER_INFO.format(self.class_name,u["userName"],u["uid"],len(all_illust),u["latest_id"]))
 					# log_str("更新:{}|{} {} {} {}".format(u["uid"],u["latest_id"],latest_id,d_total,len(all_illust)))
-					self.db.update_latest_id(u)
+					if hasattr(self.db,"pool"):
+						self.db.update_latest_id(u)
 
 					for pid in all_illust:
 						pool.put(self.thread_by_illust,(pid,),callback)

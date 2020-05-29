@@ -3,26 +3,13 @@ import json
 import time
 from flask import Flask,request,jsonify
 
-from downer import Downloader
 from config import API_HOST,API_PORT,RANDOM_LIMIT,API_THREAD
+from downer import Downloader
+from message import *
 
 
 app = Flask(__name__)
-
 db = Downloader.db
-
-# 查询不到数据
-NO_DATA_MESSAGE = "There Is No Data Corresponding To This Pid"
-# 没有该标签的作品
-NO_TAG_MESSAGE = "There Is No Illusts Corresponding To The Tag"
-# 参数错误
-PARAM_ERROR = "Params Error,Try Again"
-# 内部错误
-INTERNAL_ERROR_MESSAGE = "Internal Error"
-# API地址错误
-API_ADD_ERROR = "请检查API地址!"
-# 500错误
-API_ERROR = "出错了"
 
 # 首页
 @app.route('/api/v2')

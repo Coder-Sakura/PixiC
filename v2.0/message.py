@@ -43,5 +43,19 @@ INSERT_FAIL_INFO = "{}:插入{}失败"
 
 # DM
 DM_NETWORK_ERROR_INFO = "{}:代理无效/网络错误,{}\n{}"
-DM_DOWNLOAD_SUCCESS_INFO = "{}:下载成功!大小:{}"
+DM_DOWNLOAD_SUCCESS_INFO = "{}:{}下载成功!大小:{}"
+
+# API
+# 查询不到数据
+NO_DATA_MESSAGE = "There Is No Data Corresponding To This Pid"
+# 没有该标签的作品
+NO_TAG_MESSAGE = "There Is No Illusts Corresponding To The Tag"
+# 参数错误
+PARAM_ERROR = "Params Error,Try Again"
+# 内部错误
+INTERNAL_ERROR_MESSAGE = "Internal Error"
+# API地址错误
+API_ADD_ERROR = "请检查API地址!"
+# 500错误
+API_ERROR = "出错了"
 # ================================================

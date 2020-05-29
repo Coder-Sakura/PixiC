@@ -32,6 +32,9 @@ class db_client(object):
 	"""
 
 	def __init__(self,thread_num=8):
+		if DB_ENABLE == False:
+			return
+			
 		log_str(DB_INST)
 		try:
 			self.pool = PooledDB(
@@ -291,7 +294,7 @@ class db_client(object):
 
 
 
-DBclient = db_client()
+DBClient = db_client()
 
 
 

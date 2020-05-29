@@ -79,7 +79,9 @@ RANDOM_BOOKMARK_LIMIT = 3000
 
 # ===============数据库连接信息====================
 # 是否使用数据库
-DB_ENABLE = False
+# 不使用则直接下载,
+DB_ENABLE = True
+# DB_ENABLE = False
 
 DB_HOST = 'localhost'
 DB_PORT = 3306
