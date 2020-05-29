@@ -19,7 +19,7 @@ from db import DBclient
 from folder import file_manager
 from logstr import log_str
 from login import client
-
+from message import *
 
 class Down(object):
 	def __init__(self):
@@ -43,6 +43,7 @@ class Down(object):
 		self.ajax_illust = "https://www.pixiv.net/ajax/illust/{}"
 		# 动图的zip包下载地址
 		self.zip_url = "https://www.pixiv.net/ajax/illust/{}/ugoira_meta"
+		self.class_name = self.__class__.__name__
 
 	def baseRequest(self,options,data=None,params=None,retry_num=5):
 		'''
@@ -85,8 +86,7 @@ class Down(object):
 			if retry_num > 0:
 				return self.baseRequest(options,data,params,retry_num-1)
 			else:
-				log_str("baseRequest:%s"%e)
-				raise Exception("baseRequest:代理无效/网络错误")
+				log_str(DM_NETWORK_ERROR_INFO.format(self.class_name,options["url"],e))
 
 	def get_illust_info(self,pid,extra=None):
 		'''
@@ -104,9 +104,6 @@ class Down(object):
 		resp = json.loads(self.baseRequest(options={"url":info_url}).text)
 		if resp["error"] == True:
 			# 出错则不更新,不下载;
-			# 
-			# 
-			# print("resp["error"]",resp["error"])
 			return None
 		
 		# 数据
@@ -235,7 +232,7 @@ class Down(object):
 		else:
 			c = self.baseRequest(options={"url":original}).content
 			size = self.downSomething(illustPath,c)
-			log_str("{}下载成功! 大小:{}".format(name,self.size2Mb(size)))
+			log_str(DM_DOWNLOAD_SUCCESS_INFO.format(self.class_name,name,self.size2Mb(size)))
 			time.sleep(1)
 
 	def illustMulti(self,data):
@@ -270,7 +267,7 @@ class Down(object):
 			else:
 				c = self.baseRequest(options={"url":new_original}).content
 				size = self.downSomething(illustPath,c)
-				log_str("{}下载成功! 大小:{}".format(name,self.size2Mb(size)))
+				log_str(DM_DOWNLOAD_SUCCESS_INFO.format(self.class_name,name,self.size2Mb(size)))
 				time.sleep(1)
 
 	def illustGif(self,data):
@@ -310,7 +307,7 @@ class Down(object):
 			imageio.mimsave(illustPath,frames,duration=delay)
 			# 下载成功
 			size = os.path.getsize(illustPath)
-			log_str("{}下载成功! 大小:{}".format(name,self.size2Mb(size)))
+			log_str(DM_DOWNLOAD_SUCCESS_INFO.format(self.class_name,name,self.size2Mb(size)))
 			# 删除解压出来的图片
 			for j in files:
 				os.remove(os.path.join(path_,j))
@@ -318,7 +315,6 @@ class Down(object):
 
 	def downSomething(self,path,content):
 		# name考虑切分,或者传参进来
-		# os.path.getsize != 58 and os.path.exists(name) == False
 		with open(path,"wb") as f:
 			f.write(content)
 		return os.path.getsize(path)

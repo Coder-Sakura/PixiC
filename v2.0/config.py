@@ -38,7 +38,7 @@ PIXIV_CRAWLER_ENABLED = True
 PIXIV_BOOKMARK_ENABLED = True
 
 # Api控制开关
-PIXIV_API_ENABLED = False
+PIXIV_API_ENABLED = True
 # ================================================
 
 
@@ -48,6 +48,7 @@ USERS_CYCLE = 43200
 # USERS_CYCLE = 600
 
 # 关注-最低收藏限制,高于LIMIT才会下载,默认3000
+# USERS_LIMIT = 0
 USERS_LIMIT = 3000
 
 # 收藏-作品检测周期,单位秒,默认7200秒,2小时
@@ -61,7 +62,6 @@ BOOKMARK_LIMIT = 0
 
 # ================================================
 # API设置
-# 主机
 API_HOST = '0.0.0.0'
 # 端口
 # 20200510 pixiv 网站排名 + 5
@@ -78,6 +78,9 @@ RANDOM_BOOKMARK_LIMIT = 3000
 
 
 # ===============数据库连接信息====================
+# 是否使用数据库
+DB_ENABLE = False
+
 DB_HOST = 'localhost'
 DB_PORT = 3306
 DB_USER = 'root'

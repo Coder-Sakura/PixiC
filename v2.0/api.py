@@ -10,7 +10,6 @@ from config import API_HOST,API_PORT,RANDOM_LIMIT,API_THREAD
 app = Flask(__name__)
 
 db = Downloader.db
-# db.create_db(thread_num=API_THREAD)
 
 # 查询不到数据
 NO_DATA_MESSAGE = "There Is No Data Corresponding To This Pid"
@@ -20,7 +19,10 @@ NO_TAG_MESSAGE = "There Is No Illusts Corresponding To The Tag"
 PARAM_ERROR = "Params Error,Try Again"
 # 内部错误
 INTERNAL_ERROR_MESSAGE = "Internal Error"
-
+# API地址错误
+API_ADD_ERROR = "请检查API地址!"
+# 500错误
+API_ERROR = "出错了"
 
 # 首页
 @app.route('/api/v2')
@@ -37,38 +39,37 @@ def get_info():
 		try:
 			int(pid)
 		except:
-			return jsonify({'result':{"error":False,"message":PARAM_ERROR}})
+			return jsonify({'result':[{"error":False,"message":PARAM_ERROR}]})
 			
 		# 无传参pid,pid长度异常
 		if pid == None or len(pid) > 20:
-			return jsonify({'result':{"error":False,"message":PARAM_ERROR}})
+			return jsonify({'result':[{"error":False,"message":PARAM_ERROR}]})
 
 		# pid小于0
 		if int(pid) < 0:
-			return jsonify({'result':{"error":False,"message":PARAM_ERROR}})
+			return jsonify({'result':[{"error":False,"message":PARAM_ERROR}]})
 
-		print(pid)
 		try:
-			res = db.select_illust(pid)
-			if res == "" or res == None:
-				res = {"error":False,"message":NO_DATA_MESSAGE}
+			r = db.select_illust(pid)
+			if r == "" or r == None:
+				return jsonify({'result':[{"error":False,"message":NO_DATA_MESSAGE}]})
 			else:
-				res["reverse_url"] = db.pixiv_re_proxy(res)
-				print("res",res)
+				r["reverse_url"] = db.pixiv_re_proxy(r)
 				# 删除不必要的字段
-				del res["urls"],res["path"]
-				res["error"],res["message"] = False,""
+				del r["urls"],r["path"]
+				r["error"],r["message"] = False,""
+				print("r",r)
 		except Exception as e:
-			print(e)
-			res = {"error":True,"message":INTERNAL_ERROR_MESSAGE}
-		finally:	
+			print("e",e)
+			return jsonify({'result':[{"error":True,"message":INTERNAL_ERROR_MESSAGE}]})
+		else:
+			res = [r]
 			return jsonify({'result':res})
 
 # 随机获取1~10条记录，最多指定2个tag
 @app.route('/api/v2/random',methods=['GET','POST'])
 def p_random():
 	# extra指定tag
-	# 单tag: ta .method == "POST":
 	if request.method == "POST":
 		num = request.form.get('num',0)
 		ex = request.form.get('extra',None)
@@ -77,17 +78,17 @@ def p_random():
 		try:
 			int(num)
 		except:
-			return jsonify({'result':{"error":False,"message":PARAM_ERROR}})
+			return jsonify({'result':[{"error":False,"message":PARAM_ERROR}]})
 			
 		# num小于等于0
 		if int(num) <= 0:
-			return jsonify({'result':{"error":False,"message":PARAM_ERROR}})
+			return jsonify({'result':[{"error":False,"message":PARAM_ERROR}]})
 
 
 		# 大于单次返回限制
 		if int(num) > RANDOM_LIMIT:
 			num = 1
-		print(num,ex)
+		print("num",num,"tag",ex)
 
 		res = []
 		for i in range(int(num)):
@@ -95,6 +96,7 @@ def p_random():
 			if r == None:
 				return jsonify({'result':{"error":False,"message":NO_TAG_MESSAGE}})
 			r["reverse_url"] = db.pixiv_re_proxy(r)
+			r["error"],r["message"] = False,""
 			res.append(r)
 		print(res)
 		return jsonify({'result':res})
@@ -106,11 +108,11 @@ def insert2db():
 
 @app.errorhandler(404)
 def error404(error):
-	return "请检查API地址!"
+	return API_ADD_ERROR
 
 @app.errorhandler(500)
 def error500(error):
-	return "出错了"
+	return API_ERROR
 
 if __name__ == '__main__':
 	# 通过设置app.run()的参数，来达到多线程的效果

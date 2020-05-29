@@ -3,11 +3,13 @@ import time
 # 多进程
 from multiprocessing import Process
 
-from crawler import Crawler
-from bookmark import Bookmark
 from api import app,db
-from login import client
+from bookmark import Bookmark
+from crawler import Crawler
 from config import *
+from login import client
+from logstr import log_str
+from message import *
 
 class Scheduler(object):
 	def scheduler_crawler(self,limit=USERS_CYCLE):
@@ -53,6 +55,9 @@ class Scheduler(object):
 			pixiv_bookmark = Process(target=self.scheduler_bookmark)
 			pixiv_bookmark.start()
 
+		if DB_ENABLE == False:
+			log_str(DB_INFO)
+			PIXIV_API_ENABLED = False
 		if PIXIV_API_ENABLED:
 			pixiv_api = Process(target=self.scheduler_api)
 			pixiv_api.start()

@@ -3,7 +3,6 @@ import os
 import re
 
 from config import ROOT_PATH,BOOKMARK_PATH
-from logstr import log_str
 
 class Folder(object):
 	def __init__(self):
@@ -40,15 +39,11 @@ class Folder(object):
 		# 避免画师更新名字,进行判断id
 		for folder in os.listdir(self.path):
 			if str(uid) == folder.split('--')[0]:
-				# log_str(u'[名字叫{}文件夹已存在！]'.format(painter_name))
 				user_path = os.path.join(self.path,folder)
-				# os.chdir(user_path) # 切换到目录
 				return user_path
 
-		# log_str(u'[建了一个{}文件夹！]'.format(painter_name))
 		user_path = os.path.join(self.path,painter_name)
 		os.makedirs(user_path)
-		# os.chdir(user_path) # 切换到目录
 		return user_path
 
 	def mkdir_illusts(self,user_path,pid):
@@ -63,10 +58,8 @@ class Folder(object):
 
 		if not isExists:
 			os.makedirs(illusts_id_path)
-			# os.chdir(illusts_id_path) ##切换到目录
 			return illusts_id_path
 		else:
-			# os.chdir(illusts_id_path) ##切换到目录
 			return illusts_id_path
 
 file_manager = Folder()

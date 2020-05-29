@@ -5,9 +5,9 @@ from DBUtils.PooledDB import PooledDB
 # fetchall结果转字典
 from pymysql.cursors import DictCursor
 
-from config import DB_HOST,DB_PORT,DB_USER,DB_PASSWD,DB_DATABASE,DB_CHARSET,RANDOM_BOOKMARK_ENABLE,RANDOM_BOOKMARK_LIMIT
+from config import *
 from logstr import log_str
-
+from message import *
 
 
 # 2019-11-24 05:56:33
@@ -32,13 +32,13 @@ class db_client(object):
 	"""
 
 	def __init__(self,thread_num=8):
-		log_str("数据库连接池实例化...")
+		log_str(DB_INST)
 		try:
 			self.pool = PooledDB(
 			    pymysql,thread_num,host=DB_HOST,user=DB_USER,
 			    passwd=DB_PASSWD,db=DB_DATABASE,port=DB_PORT,charset=DB_CHARSET) # 5为连接池里的最少连接数
 		except pymysql.err.OperationalError as e:
-			log_str("请确保Mysql在运行/配置好\n{}".format(e))
+			log_str(DB_CONNECT_ERROR_INFO.format(e))
 			exit()
 		# self.create_db if flag == True
 
@@ -94,7 +94,7 @@ class db_client(object):
 				cur.execute(sql_2,data)
 				conn.commit()
 			except Exception as e:
-				print(e)
+				log_str(e)
 				conn.rollback()
 				# 默认全更新
 				# return False
@@ -154,8 +154,6 @@ class db_client(object):
 		if d["COUNT(*)"] >= 1:
 			return True,d["path"]
 		else:
-			# if d["path"] == None:
-			# 	print("is None")
 			return False,d["path"]
 
 	def insert_illust(self,u,table="pixiv"):
@@ -184,7 +182,7 @@ class db_client(object):
 			# 	cur.executemany(sql,data)
 			conn.commit()
 		except Exception as e:
-			print(e)
+			log_str(e)
 			log_str(u)
 			conn.rollback()
 			return False
@@ -216,7 +214,7 @@ class db_client(object):
 			cur.execute(sql,data)
 			conn.commit()
 		except Exception as e:
-			log_str("更新作品:{} 出错,{}".format(u["pid"],e))
+			log_str(DB_UPDATE_ILLUST_ERROR_INF.format(self.__class__.__name__,u["pid"],e))
 			conn.rollback()
 			return False
 		else:
@@ -235,7 +233,6 @@ class db_client(object):
 		cur.execute(sql,data)
 		r = cur.fetchall()
 		if len(r) != 0:
-			# print(r)
 			res = r[0]
 			return res
 		else:

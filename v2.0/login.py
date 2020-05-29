@@ -5,8 +5,9 @@ import json
 import re
 import requests
 
-from config import COOKIE_NAME, COOKIE_UPDATE_ENABLED, PRO_DIR, USER_ID
+from config import *
 from logstr import log_str
+from message import *
 
 class Login(object):
 
@@ -20,6 +21,7 @@ class Login(object):
 		self.user_id = ""
 		self.flag = True if USER_ID == "" else False
 		self.cookie = RequestsCookieJar()
+		self.class_name = self.__class__.__name__
 		
 	def check(self):
 		"""
@@ -27,10 +29,9 @@ class Login(object):
 		"""
 		self.get_cookie() if COOKIE_UPDATE_ENABLED == True else self.set_cookie()
 		if self.cookie == []:
-			log_str("请使用Chrome登录Pixiv,以便获取cookie")
-			log_str("请打开代理软件")
+			log_str(LOGIN_ERROR_INFO.format(self.class_name))
 			exit()
-		log_str("{} 初始化完成！".format(__file__.split("\\")[-1].split(".")[0]))
+		log_str(INIT_INFO.format(self.class_name))
 
 	def get_cookie(self):
 		'''
@@ -64,7 +65,7 @@ class Login(object):
 		with open(COOKIE_NAME, "r", encoding="utf8") as fp:
 			# readlines(),读取之后,文件指针会在文件末尾,再执行只会读到空[]
 			if fp.readlines() == []:
-				log_str("cookie为空,请设置'COOKIE_UPDATE_ENABLED'以更新cookie")
+				log_str(COOKIE_EMPTY_INFO.format(self.class_name))
 				exit()
 			fp.seek(0)
 			cookies = json.load(fp)

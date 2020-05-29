@@ -9,8 +9,8 @@ import json
 
 from downer import Downloader
 from logstr import log_str
+from message import *
 from thread_pool import *
-
 
 class Crawler(object):
 	def __init__(self):
@@ -27,6 +27,7 @@ class Crawler(object):
 		self.all_illust_url = "https://www.pixiv.net/ajax/user/{}/profile/all"
 		self.file_manager = Downloader.file_manager
 		self.db = Downloader.db
+		self.class_name = self.__class__.__name__
 
 	def get_page_users(self,offset):
 		"""
@@ -42,7 +43,7 @@ class Crawler(object):
 			r = json.loads(self.base_request({"url":self.follw_url},params=params).text)
 			res = r['body']['users']
 		except Exception as e:
-			log_str("Crawler:获取画师出错,第{}-{}位".foramt(offset,offset+100))
+			log_str(FOLLOW_PAGE_ERROR_INFO.foramt(self.class_name,offset,offset+100))
 			return []
 		else:
 			return res
@@ -68,7 +69,7 @@ class Crawler(object):
 
 				if u["illusts"] == []:
 					user_info["latest_id"] = -1
-					log_str("{}:无作品...".format(u["userId"]))
+					log_str(FOLLOW_NO_ILLUSTS_INFO.format(self.class_name,u["userId"]))
 					# 无作品不做动作
 					continue
 				else:
@@ -82,7 +83,6 @@ class Crawler(object):
 			offset += 100
 
 		return users_info_list
-		# print(users_info_list)
 
 	def get_user_illust(self,u):
 		"""
@@ -98,7 +98,7 @@ class Crawler(object):
 			# 列表推导式合并取keys,转为list
 			user_illust_list = list([dict(i) if len(m) == 0 else dict(i,**m)][0].keys())
 		except Exception as e:
-			log_str("Crwaler:获取画师数据出错 {}".format(e))
+			log_str(FOLLOW_DATA_ERROR_INFO.format(self.class_name,e))
 			return []
 		else:
 			return user_illust_list
@@ -106,7 +106,6 @@ class Crawler(object):
 	def thread_by_illust(self,*args):
 		pid = args[0]
 		isExists,path = self.db.check_illust(pid)
-		# print(isExists,path)
 
 		"""
 		if isExists == False and path == None:
@@ -134,33 +133,33 @@ class Crawler(object):
 		try:
 			info = Downloader.get_illust_info(pid)
 		except Exception as e:
-			log_str("{}:请求错误:{}".format(pid,e))
+			log_str(ILLUST_NETWORK_ERROR_INFO.format(self.class_name,pid,e))
 			return 
 
 		if info == None:
-			log_str("该作品{}已被删除,或作品ID不存在.".format(pid))
+			log_str(ILLUST_EMPTY_INFO.format(self.class_name,pid))
 			return
 
 		# 数据库无该记录
 		if isExists == False:
 			res = self.db.insert_illust(info)
 			if res == False:
-				log_str("插入{}失败".format(pid))
+				log_str(INSERT_FAIL_INFO.format(self.class_name,pid))
 			else:
-				log_str("插入{}成功".format(pid))
+				log_str(INSERT_SUCCESS_INFO.format(self.class_name,pid))
 		# 数据库有该记录
 		else:
 			self.db.updata_illust(info)
 
 	def run(self):
-		log_str("{}:开始轮询,获取关注列表...".format(self.__class__.__name__))
+		log_str(BEGIN_INFO.format(self.class_name))
 		try:
 			u_list = self.get_users()
 		except Exception as e:
-			log_str("{}:获取关注列表出错".format(__file__.split("\\")[-1].split(".")[0]))
-			log_str("{}:进入休眠".format(__file__.split("\\")[-1].split(".")[0]))
+			log_str(FOLLOW_ERROR_INFO.format(self.class_name))
+			log_str(SLEEP_INFO.format(self.class_name))
 		else:
-			log_str("{}:成功获取关注列表.共{}位关注用户".format(self.__class__.__name__,len(u_list)))
+			log_str(FOLLOW_SUCCESS_INFO.format(self.class_name,len(u_list)))
 
 		try:
 			pool = ThreadPool(8)
@@ -169,9 +168,10 @@ class Crawler(object):
 				latest_id = self.db.check_user(u)
 				d_total = self.db.get_total(u)
 				# log_str("当前画师:{}(pid:{}) |作品数: {}".format(u["userName"],u["uid"],len(all_illust)))
+				
 				if u["latest_id"] >= latest_id and d_total < len(all_illust):
 					# 满足条件更新
-					log_str("更新画师:{}(pid:{}) |作品数: {} 最新作品: {}".format(u["userName"],u["uid"],len(all_illust),u["latest_id"]))
+					log_str(UPDATE_USER_INFO.format(self.class_name,u["userName"],u["uid"],len(all_illust),u["latest_id"]))
 					# log_str("更新:{}|{} {} {} {}".format(u["uid"],u["latest_id"],latest_id,d_total,len(all_illust)))
 					self.db.update_latest_id(u)
 
@@ -180,7 +180,7 @@ class Crawler(object):
 
 					time.sleep(3)
 				else:
-					log_str("当前画师:{}(pid:{}) |作品数: {}".format(u["userName"],u["uid"],len(all_illust)))
+					log_str(NOW_USER_INFO.format(self.class_name,u["userName"],u["uid"],len(all_illust)))
 					continue
 
 			pool.close()
@@ -189,7 +189,7 @@ class Crawler(object):
 			pool.close()
 		finally:
 			pool.close()
-		log_str("{}:进入休眠".format(__file__.split("\\")[-1].split(".")[0]))
+		log_str(SLEEP_INFO.format(self.class_name))
 
 
 # if __name__ == '__main__':
