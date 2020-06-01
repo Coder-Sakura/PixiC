@@ -16,6 +16,9 @@ DB_UPDATE_ILLUST_ERROR_INFO = "{}:更新作品:{},出错:{}"
 LOGIN_ERROR_INFO = "{}:打开代理软件/使用Chrome登录Pixiv"
 INIT_INFO = "{}:初始化完成！"
 COOKIE_EMPTY_INFO = "{}:本地Cookie为空,请更新"
+FILE_NOT_FOUND_INFO = "{}:首次运行请将COOKIE_UPDATE_ENABLED设置为True"
+GET_COOKIE_INFO = "{}:正在获取账号信息"
+GET_COOKIE_NOW_INFO = "{}:获取信息时请关闭Chrome"
 
 # CW
 BEGIN_INFO = "{}:开始轮询"
@@ -44,6 +47,8 @@ INSERT_FAIL_INFO = "{}:插入{}失败"
 # DM
 DM_NETWORK_ERROR_INFO = "{}:代理无效/网络错误,{}\n{}"
 DM_DOWNLOAD_SUCCESS_INFO = "{}:{}下载成功!大小:{}"
+UNLOGIN_TEXT = "出现了未知错误"
+UNLOGIN_INFO = "{}:请先在Chrome上登录Pixiv账号"
 
 # API
 # 查询不到数据

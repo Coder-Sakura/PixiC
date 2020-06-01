@@ -20,6 +20,7 @@ from folder import file_manager
 from logstr import log_str
 from login import client
 from message import *
+from config import *
 
 class Down(object):
 	def __init__(self):
@@ -69,6 +70,7 @@ class Down(object):
 	    '''
 		# log_str(options["url"])
 		base_headers = [options["headers"] if "headers" in options.keys() else self.headers][0]
+
 		try:
 	    	# if options["method"].lower() == "get":
 	    	# 网络请求函数get、post请求,暂时不判断method字段,待后续更新
@@ -102,10 +104,16 @@ class Down(object):
 		'''
 		info_url = self.ajax_illust.format(pid)
 		resp = json.loads(self.baseRequest(options={"url":info_url}).text)
+		# 未登录
+		if resp["message"] == UNLOGIN_TEXT:
+			log_str(UNLOGIN_INFO.format(self.class_name))
+			return None
+
 		if resp["error"] == True:
 			# 出错则不更新,不下载;
 			return None
 		
+
 		# 数据
 		info = resp["body"]
 		uid = int(info["userId"])
@@ -330,4 +338,4 @@ class Down(object):
 			return "%.3fKb" %(size/1024)
 
 
-Downloader = Down()
+# Downloader = Down()

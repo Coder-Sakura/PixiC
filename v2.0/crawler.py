@@ -7,15 +7,16 @@ author: coder_sakura
 import json
 import time
 
-from downer import Downloader
+from downer import Down
 from logstr import log_str
 from message import *
 from thread_pool import *
 
 class Crawler(object):
 	def __init__(self):
-		self.user_id = Downloader.client.user_id
-		self.base_request = Downloader.baseRequest
+		self.Downloader = Down()
+		self.user_id = self.Downloader.client.user_id
+		self.base_request = self.Downloader.baseRequest
 
 		# # 作品数据
 		# self.ajax_illust = "https://www.pixiv.net/ajax/illust/{}"
@@ -25,8 +26,8 @@ class Crawler(object):
 		self.artworks_url = "https://www.pixiv.net/artworks/{}"
 		# 画师作品列表
 		self.all_illust_url = "https://www.pixiv.net/ajax/user/{}/profile/all"
-		self.file_manager = Downloader.file_manager
-		self.db = Downloader.db
+		self.file_manager = self.Downloader.file_manager
+		self.db = self.Downloader.db
 		self.class_name = self.__class__.__name__
 
 	def get_page_users(self,offset):
@@ -41,8 +42,11 @@ class Crawler(object):
 		}
 		try:
 			r = json.loads(self.base_request({"url":self.follw_url},params=params).text)
+			print(r)
 			res = r['body']['users']
 		except Exception as e:
+			if r["message"] == UNLOGIN_TEXT:
+				log_str(UNLOGIN_INFO.format(self.class_name))
 			log_str(FOLLOW_PAGE_ERROR_INFO.foramt(self.class_name,offset,offset+100))
 			return []
 		else:
@@ -127,7 +131,7 @@ class Crawler(object):
 		"""
 		pid = args[0]
 		try:
-			info = Downloader.get_illust_info(pid)
+			info = self.Downloader.get_illust_info(pid)
 		except Exception as e:
 			log_str(ILLUST_NETWORK_ERROR_INFO.format(self.class_name,pid,e))
 			return 
@@ -159,6 +163,7 @@ class Crawler(object):
 		except Exception as e:
 			log_str(FOLLOW_ERROR_INFO.format(self.class_name))
 			log_str(SLEEP_INFO.format(self.class_name))
+			return
 		else:
 			log_str(FOLLOW_SUCCESS_INFO.format(self.class_name,len(u_list)))
 
@@ -189,7 +194,7 @@ class Crawler(object):
 
 			pool.close()
 		except Exception as e:
-			log_str("Exception",e)
+			log_str("Exception {}".format(e))
 			pool.close()
 		finally:
 			pool.close()

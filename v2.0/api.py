@@ -4,11 +4,12 @@ import time
 from flask import Flask,request,jsonify
 
 from config import API_HOST,API_PORT,RANDOM_LIMIT,API_THREAD
-from downer import Downloader
+from downer import Down
 from message import *
 
 
 app = Flask(__name__)
+Downloader= Down()
 db = Downloader.db
 
 # 首页
@@ -16,9 +17,12 @@ db = Downloader.db
 def index():
 	return "<h2>Now it's {} Welcome To PixiC API!</h2>".format(time.strftime("%Y-%m-%d %H:%M:%S"))
 
-# 查询指定pid的信息
 @app.route('/api/v2/get-info',methods=['GET','POST'])
 def get_info():
+	"""
+	查询指定pid的信息
+	pid 插画pid
+	"""
 	if request.method == "POST":
 		pid = request.form.get('pid',None)
 
@@ -81,10 +85,15 @@ def p_random():
 		for i in range(int(num)):
 			r = db.random_illust(extra=ex)
 			if r == None:
-				return jsonify({'result':{"error":False,"message":NO_TAG_MESSAGE}})
+				continue
 			r["reverse_url"] = db.pixiv_re_proxy(r)
 			r["error"],r["message"] = False,""
 			res.append(r)
+			
+		if res == []:
+			return jsonify({'result':{"error":False,"message":NO_TAG_MESSAGE}})
+		
+		res = [dict(t) for t in set([tuple(d.items()) for d in res])]
 		print(res)
 		return jsonify({'result':res})
 

@@ -8,18 +8,19 @@ import math
 import json
 import time
 
-from downer import Downloader
+from downer import Down
 from logstr import log_str
 from message import *
 from thread_pool import *
 
 class Bookmark(object):
 	def __init__(self):
-		self.user_id = Downloader.client.user_id
-		self.base_request = Downloader.baseRequest
+		self.Downloader = Down()
+		self.user_id = self.Downloader.client.user_id
+		self.base_request = self.Downloader.baseRequest
 		
 		self.bookmark_url = "https://www.pixiv.net/ajax/user/{}/illusts/bookmarks".format(self.user_id)
-		self.db = Downloader.db
+		self.db = self.Downloader.db
 		self.class_name = self.__class__.__name__
 
 	def get_page_bookmark(self,offset):
@@ -36,12 +37,12 @@ class Bookmark(object):
 		}
 		try:
 			r = json.loads(self.base_request({"url":self.bookmark_url},params=params).text)
-			res = r["body"]["works"]
-			total = r["body"]["total"]
-			illusts_pid = [int(i["illustId"]) for i in res]
 		except Exception as e:
 			return None,None
 		else:
+			res = r["body"]["works"]
+			total = r["body"]["total"]
+			illusts_pid = [int(i["illustId"]) for i in res]
 			return illusts_pid,total
 
 	def check_update(self):
@@ -73,7 +74,7 @@ class Bookmark(object):
 	def thread_by_illust(self,*args):
 		pid = args[0]
 		try:
-			info = Downloader.get_illust_info(pid,extra="bookmark")
+			info = self.Downloader.get_illust_info(pid,extra="bookmark")
 		except Exception as e:
 			log_str(ILLUST_NETWORK_ERROR_INFO.format(self.class_name,pid,e))
 			return 
@@ -128,7 +129,7 @@ class Bookmark(object):
 
 				time.sleep(1)
 		except Exception as e:
-			log_str("Exception",e)
+			log_str("Exception {}".format(e))
 		finally:
 			pool.close()
 		log_str(SLEEP_INFO.format(self.class_name))
