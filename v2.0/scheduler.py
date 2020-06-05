@@ -1,9 +1,8 @@
-# coding=utf8
 import time
 # 多进程
 from multiprocessing import Process
 
-from api import app,db
+from api import app
 from bookmark import Bookmark
 from crawler import Crawler
 from config import *

@@ -4,13 +4,15 @@ import time
 from flask import Flask,request,jsonify
 
 from config import API_HOST,API_PORT,RANDOM_LIMIT,API_THREAD
-from downer import Down
+# from downer import Down
+from db import DBClient
 from message import *
 
 
 app = Flask(__name__)
-Downloader= Down()
-db = Downloader.db
+# Downloader= Down()
+# db = Downloader.db
+db = DBClient
 
 # 首页
 @app.route('/api/v2')

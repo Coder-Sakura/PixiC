@@ -42,13 +42,12 @@ class Crawler(object):
 		}
 		try:
 			r = json.loads(self.base_request({"url":self.follw_url},params=params).text)
-			print(r)
 			res = r['body']['users']
 		except Exception as e:
 			if r["message"] == UNLOGIN_TEXT:
 				log_str(UNLOGIN_INFO.format(self.class_name))
 			log_str(FOLLOW_PAGE_ERROR_INFO.foramt(self.class_name,offset,offset+100))
-			return []
+			return None
 		else:
 			return res
 
@@ -63,7 +62,7 @@ class Crawler(object):
 		while True:
 			u_list = self.get_page_users(offset)
 
-			if u_list == []:
+			if u_list == None:
 				continue
 
 			for u in u_list:
@@ -81,7 +80,7 @@ class Crawler(object):
 
 				users_info_list.append(user_info)
 
-			if 0 < len(u_list) < 100:
+			if u_list == []:
 				break
 
 			offset += 100
@@ -166,7 +165,6 @@ class Crawler(object):
 			return
 		else:
 			log_str(FOLLOW_SUCCESS_INFO.format(self.class_name,len(u_list)))
-
 		try:
 			pool = ThreadPool(8)
 			for u in u_list:

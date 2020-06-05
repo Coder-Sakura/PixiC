@@ -21,10 +21,10 @@ USER_ID = "27858363"
 # 存储用户cookie的文件名称
 COOKIE_NAME = 'pixiv_cookie'
 
-# 是否更新本地cookie  
-# 首次运行请设置为True以创建你的cookie  
-# 后续运行可以设置为False以直接使用之前持久化下来的Cookie  
-# 注意!!cookie存在时效,启动爬虫前,先用chrome访问pixiv试试  
+# 设置该项以配置是否更新本地cookie  
+# 首次运行请设置为True
+# 后续运行可设置为False,但请保证本地的cookie文件与COOKIE_NAME一致
+# 该项设置为False及本地无cookie文件,会引发[Errno 2]异常
 # COOKIE_UPDATE_ENABLED = True
 COOKIE_UPDATE_ENABLED = False
 # ================================================
@@ -32,13 +32,13 @@ COOKIE_UPDATE_ENABLED = False
 
 # ======控制开关========
 # 关注画师爬虫控制开关
-PIXIV_CRAWLER_ENABLED = False
+PIXIV_CRAWLER_ENABLED = True
 
 # 收藏作品爬虫控制开关
-PIXIV_BOOKMARK_ENABLED = False
+PIXIV_BOOKMARK_ENABLED = True
 
 # Api控制开关
-PIXIV_API_ENABLED = True
+PIXIV_API_ENABLED = False
 # ================================================
 
 

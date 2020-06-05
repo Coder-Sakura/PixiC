@@ -28,6 +28,7 @@ class Login(object):
 		获取cookie
 		"""
 		log_str(GET_COOKIE_INFO.format(self.class_name))
+		# 条件表达式,将cookie对象赋值给self.cookie
 		self.get_cookie() if COOKIE_UPDATE_ENABLED == True else self.set_cookie()
 		if self.cookie == []:
 			log_str(LOGIN_ERROR_INFO.format(self.class_name))
@@ -56,15 +57,14 @@ class Login(object):
 
 		with open(COOKIE_NAME, "w") as fp:
 		    json.dump(cookies, fp)
-
-		self.set_cookie()
+		    print(cookies)
+		    for _ in cookies:
+		    	self.cookie.set(_['name'], _['value'])
 
 	def set_cookie(self):
 		'''
 		读取并返回cookie
 		'''
-		jar = RequestsCookieJar()
-
 		try:
 			with open(COOKIE_NAME, "r", encoding="utf8") as fp:
 				# readlines(),读取之后,文件指针会在文件末尾,再执行只会读到空[]
@@ -75,9 +75,9 @@ class Login(object):
 				cookies = json.load(fp)
 				for cookie in cookies:
 					self.cookie.set(cookie['name'], cookie['value'])
-					jar.set(cookie['name'], cookie['value'])
 		except FileNotFoundError as e:
-			log_str(FILE_NOT_FOUND_INFO.format(self.class_name))
+			log_str(FILE_NOT_FOUND_INFO_1.format(self.class_name))
+			log_str(FILE_NOT_FOUND_INFO_2.format(self.class_name))
 			log_str(e)
 			exit()
 		
@@ -86,14 +86,10 @@ class Login(object):
 			self.user_id = self.get_user_id()
 		else:
 			self.user_id = USER_ID
-		return jar
-		
+		return self.cookie
+
 	def get_user_id(self):
 		user_id = re.findall(r'''.*?,user_id:"(.*?)",.*?''',requests.get(self.host_url,cookies=self.cookie).text.replace(" ",""))[0]
 		return user_id
 
 client = Login()
-# if __name__ == '__main__':
-# 	a = Login().cookie
-# 	print(a)
-	# Login()
