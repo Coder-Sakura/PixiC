@@ -1,11 +1,11 @@
 # coding=utf8
 # ================================================
 # 关注画师路径为None时,在脚本当前路径创建pixiv_crawler文件夹
-ROOT_PATH = r'H:\se18'
+ROOT_PATH = r''
 # ROOT_PATH = None
 
 # 收藏作品路径为None时,在脚本当前路径创建bookmark文件夹
-BOOKMARK_PATH = r'H:\bookmark'
+BOOKMARK_PATH = r''
 
 # Chrome用户数据目录
 PRO_DIR = r'C:\Users\Hatsune Miku\AppData\Local\Google\Chrome\User Data'
@@ -15,18 +15,17 @@ PRO_DIR = r'C:\Users\Hatsune Miku\AppData\Local\Google\Chrome\User Data'
 # ================账户uid及cookie================
 # uid用于获取登录用户的关注画师、收藏  
 # 不知道的话留空,请不要随意填写
-USER_ID = "27858363"
-# USER_ID = ""
+USER_ID = ""
 
 # 存储用户cookie的文件名称
-COOKIE_NAME = 'pixiv_cookie'
+COOKIE_NAME = "pixiv_cookie"
 
 # 设置该项以配置是否更新本地cookie  
 # 首次运行请设置为True
 # 后续运行可设置为False,但请保证本地的cookie文件与COOKIE_NAME一致
 # 该项设置为False及本地无cookie文件,会引发[Errno 2]异常
-# COOKIE_UPDATE_ENABLED = True
-COOKIE_UPDATE_ENABLED = False
+COOKIE_UPDATE_ENABLED = True
+# COOKIE_UPDATE_ENABLED = False
 # ================================================
 
 
@@ -38,22 +37,19 @@ PIXIV_CRAWLER_ENABLED = True
 PIXIV_BOOKMARK_ENABLED = True
 
 # Api控制开关
-PIXIV_API_ENABLED = False
+PIXIV_API_ENABLED = True
 # ================================================
 
 
 # ===============检测周期&最低限制=================
 # 关注-画师作品检测周期,单位秒,默认43200秒,12小时
 USERS_CYCLE = 43200
-# USERS_CYCLE = 600
 
 # 关注-最低收藏限制,高于LIMIT才会下载,默认3000
-# USERS_LIMIT = 0
 USERS_LIMIT = 3000
 
 # 收藏-作品检测周期,单位秒,默认7200秒,2小时
 BOOKMARK_CYCLE = 7200
-# BOOKMARK_CYCLE = 300
 
 # 收藏-最低收藏限制,高于LIMIT才会下载,默认为0
 BOOKMARK_LIMIT = 0
@@ -78,11 +74,12 @@ RANDOM_BOOKMARK_LIMIT = 3000
 
 
 # ===============数据库连接信息====================
-# 是否使用数据库
-# 不使用则直接下载,
-DB_ENABLE = True
-# DB_ENABLE = False
+# 是否使用数据库,不使用则直接下载,同时API也无法使用
+# 默认不使用
+# DB_ENABLE = True
+DB_ENABLE = False
 
+# sql文件在doc目录下,为create.sql
 DB_HOST = 'localhost'
 DB_PORT = 3306
 DB_USER = 'root'
