@@ -7,13 +7,13 @@ from config import ROOT_PATH,BOOKMARK_PATH
 class Folder(object):
 	def __init__(self):
 		# 关注画师路径处理
-		self.path = os.path.join(os.getcwd(),"pixiv_crawler") if ROOT_PATH == None else ROOT_PATH
+		self.path = os.path.join(os.getcwd(),"pixiv_crawler") if ROOT_PATH == "" else ROOT_PATH
 		isExists = os.path.exists(self.path)
 		if not isExists:os.makedirs(self.path)
 
 		# 收藏路径处理,folder类用不到,主要是确保收藏的主目录创建
 
-		self.bk_path = os.path.join(os.getcwd(),"bookmark") if BOOKMARK_PATH == None else BOOKMARK_PATH
+		self.bk_path = os.path.join(os.getcwd(),"bookmark") if BOOKMARK_PATH == "" else BOOKMARK_PATH
 		isExists = os.path.exists(self.bk_path)
 		if not isExists:os.makedirs(self.bk_path)
 

@@ -9,6 +9,9 @@ from config import *
 from logstr import log_str
 from message import *
 
+# 存储用户cookie的文件名称
+COOKIE_NAME = "pixiv_cookie"
+
 class Login(object):
 
 	def __init__(self):
