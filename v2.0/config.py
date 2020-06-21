@@ -82,7 +82,7 @@ DB_PORT = 3306
 DB_USER = 'root'
 DB_PASSWD = '123456'
 DB_DATABASE = 'moe'
-# 建议数据库和表都设置为utf8mb4  
-# 插画信息中含有emoji表情
+# 数据库/表的编码设置为utf8mb4  
+# 插画信息中含emoji表情
 DB_CHARSET = "utf8mb4"
 # ================================================

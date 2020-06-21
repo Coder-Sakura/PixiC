@@ -27,7 +27,7 @@ SLEEP_INFO = "{}:进入休眠"
 FOLLOW_SUCCESS_INFO = "{}:成功获取关注列表.共{}位关注用户"
 FOLLOW_ERROR_INFO = "{}:获取关注列表出错"
 FOLLOW_PAGE_ERROR_INFO = "{}:获取画师出错,第{}-{}位"
-FOLLOW_NO_ILLUSTS_INFO = "{}:{}无作品"
+FOLLOW_NO_ILLUSTS_INFO = "{}:{}(pid:{})无作品"
 FOLLOW_DATA_ERROR_INFO = "{}:获取画师数据出错 {}"
 UPDATE_USER_INFO = "{}:更新画师:{}(pid:{}) | 作品数:{} 最新作品:{}"
 NOW_USER_INFO = "{}:当前画师:{}(pid:{}) |作品数: {}"
@@ -50,6 +50,7 @@ DM_NETWORK_ERROR_INFO = "{}:代理无效/网络错误,{}\n{}"
 DM_DOWNLOAD_SUCCESS_INFO = "{}:{}下载成功!大小:{}"
 UNLOGIN_TEXT = "出现了未知错误"
 UNLOGIN_INFO = "{}:请先在Chrome上登录Pixiv账号"
+UL_TEXT = "UNLOGIN"
 
 # API
 # 查询不到数据

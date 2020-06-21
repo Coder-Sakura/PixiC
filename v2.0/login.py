@@ -1,5 +1,6 @@
 # coding=utf8
 from selenium import webdriver
+from selenium.common.exceptions import InvalidArgumentException
 from requests.cookies import RequestsCookieJar
 import json
 import re
@@ -53,16 +54,22 @@ class Login(object):
 		chrome_options.add_experimental_option('excludeSwitches', ['enable-automation'])
 		# 用户目录配置
 		chrome_options.add_argument('user-data-dir='+PRO_DIR)
-		driver = webdriver.Chrome(chrome_options=chrome_options)
-		driver.get(self.host_url)
-		cookies = driver.get_cookies()
-		driver.quit()
 
-		with open(COOKIE_NAME, "w") as fp:
-		    json.dump(cookies, fp)
-		    print(cookies)
-		    for _ in cookies:
-		    	self.cookie.set(_['name'], _['value'])
+		try:
+			driver = webdriver.Chrome(chrome_options=chrome_options)
+		except InvalidArgumentException as e:
+			log_str(GET_COOKIE_NOW_INFO.format(self.class_name))
+			exit()
+		else:
+			driver.get(self.host_url)
+			cookies = driver.get_cookies()
+			driver.quit()
+
+			with open(COOKIE_NAME, "w") as fp:
+			    json.dump(cookies, fp)
+			    for _ in cookies:
+			    	self.cookie.set(_['name'], _['value'])
+			
 
 	def set_cookie(self):
 		'''

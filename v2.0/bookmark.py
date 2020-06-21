@@ -38,12 +38,18 @@ class Bookmark(object):
 		try:
 			r = json.loads(self.base_request({"url":self.bookmark_url},params=params).text)
 		except Exception as e:
-			return None,None
+			# 网络请求出错
+			log_str(BOOKMARK_PAGE_ERROR_INFO.format(self.class_name))
+			return None
 		else:
+			# 未登录
+			if r["message"] == UNLOGIN_TEXT:
+				log_str(UNLOGIN_INFO.format(self.class_name))
+				return UL_TEXT
+
 			res = r["body"]["works"]
-			total = r["body"]["total"]
 			illusts_pid = [int(i["illustId"]) for i in res]
-			return illusts_pid,total
+			return illusts_pid
 
 	def check_update(self):
 		"""
@@ -55,21 +61,28 @@ class Bookmark(object):
 		"""
 		# 数据库开关关闭,直接更新
 		if hasattr(self.db,"pool") == False:
+			log_str(UPDATE_INFO.format(self.class_name))
 			return True
 
 		res = self.get_page_bookmark(0)
-		if res[0] == None:
+		print(res)
+
+		if res == UL_TEXT:
 			log_str(UPDATE_CHECK_ERROR_INFO.format(self.class_name))
 			return False
+
+		if res == None:
+			log_str(UPDATE_CHECK_ERROR_INFO.format(self.class_name))
+			return False
+			
+		# 验证前十张
+		for pid in res[0][:10]:
+			if self.db.check_illust(pid,table="bookmark")[0] == False:
+				log_str(UPDATE_INFO.format(self.class_name))
+				return True
 		else:
-			# 验证前十张
-			for pid in res[0][:10]:
-				if self.db.check_illust(pid,table="bookmark")[0] == False:
-					log_str(UPDATE_INFO.format(self.class_name))
-					return True
-			else:
-				log_str(UPDATE_CANLE_INFO.format(self.class_name))
-				return False
+			log_str(UPDATE_CANLE_INFO.format(self.class_name))
+			return False
 
 	def thread_by_illust(self,*args):
 		pid = args[0]
@@ -107,16 +120,20 @@ class Bookmark(object):
 
 		try:
 			offset = 0
-			pool = ThreadPool(8)
+			pool = ThreadPool(8)	
 
 			while True:
-				pid_list = self.get_page_bookmark(offset)[0]
-
+				pid_list = self.get_page_bookmark(offset)
 				# 获取异常返回None
 				if pid_list == None:
 					log_str(BOOKMARK_PAGE_ERROR_INFO.format(self.class_name,offset,offset+100))
 					continue
 				
+				# 未登录
+				if pid_list == UL_TEXT:
+					log_str(UNLOGIN_INFO.format(self.class_name,offset,offset+100))
+					break
+
 				# 无收藏返回[]
 				if pid_list == []:
 					break
@@ -128,6 +145,7 @@ class Bookmark(object):
 				offset += 100
 
 				time.sleep(1)
+
 		except Exception as e:
 			log_str("Exception {}".format(e))
 		finally:

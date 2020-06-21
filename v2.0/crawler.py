@@ -6,6 +6,7 @@ author: coder_sakura
 """
 import json
 import time
+import re
 
 from downer import Down
 from logstr import log_str
@@ -42,13 +43,17 @@ class Crawler(object):
 		}
 		try:
 			r = json.loads(self.base_request({"url":self.follw_url},params=params).text)
-			res = r['body']['users']
 		except Exception as e:
-			if r["message"] == UNLOGIN_TEXT:
-				log_str(UNLOGIN_INFO.format(self.class_name))
+			# 网络请求出错
 			log_str(FOLLOW_PAGE_ERROR_INFO.foramt(self.class_name,offset,offset+100))
 			return None
 		else:
+			# 未登录
+			if r["message"] == UNLOGIN_TEXT:
+				log_str(UNLOGIN_INFO.format(self.class_name))
+				return UL_TEXT
+				
+			res = r['body']['users']
 			return res
 
 	def get_users(self):
@@ -62,26 +67,35 @@ class Crawler(object):
 		while True:
 			u_list = self.get_page_users(offset)
 
+			# 网络请求出错
 			if u_list == None:
 				continue
+
+			# 未登录
+			if u_list == UL_TEXT:
+				break
+
+			# 获取所有关注完毕
+			if u_list == []:
+				break
 
 			for u in u_list:
 				user_info = {}
 				user_info["uid"] = int(u["userId"])
-				user_info["userName"] = u["userName"]
+				# userName = re.sub('[\\\/:*?"<>|]','_',u["userName"])
+				userName = re.sub(r'[\s\/:*?"<>|\\]','_',u["userName"])
+				user_info["userName"] = userName
 
 				if u["illusts"] == []:
 					user_info["latest_id"] = -1
-					log_str(FOLLOW_NO_ILLUSTS_INFO.format(self.class_name,u["userId"]))
+					log_str(FOLLOW_NO_ILLUSTS_INFO.format(self.class_name,u["userName"],u["userId"]))
 					# 无作品不做动作
-					continue
+					continue	
 				else:
 					user_info["latest_id"] = int(u["illusts"][0]["illustId"])
 
 				users_info_list.append(user_info)
 
-			if u_list == []:
-				break
 
 			offset += 100
 
@@ -160,11 +174,13 @@ class Crawler(object):
 		try:
 			u_list = self.get_users()
 		except Exception as e:
+			print(e)
 			log_str(FOLLOW_ERROR_INFO.format(self.class_name))
 			log_str(SLEEP_INFO.format(self.class_name))
 			return
 		else:
 			log_str(FOLLOW_SUCCESS_INFO.format(self.class_name,len(u_list)))
+
 		try:
 			pool = ThreadPool(8)
 			for u in u_list:
