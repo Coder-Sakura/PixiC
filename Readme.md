@@ -1,3 +1,5 @@
+部署文档移步wiki: [Wiki](https://github.com/Coder-Sakura/PixiC/wiki)
+
 1. PixiC目前功能及后续功能：
 
 - [x] 1. 获取Chrome上登录的Pixiv账户信息
