@@ -1,4 +1,6 @@
-部署文档移步wiki/blog: [Wiki](https://github.com/Coder-Sakura/PixiC/wiki)/[Blog](http://00102400.xyz/blog/2020/06/24/pixic-bu-shu/)
+部署文档： [Wiki](https://github.com/Coder-Sakura/PixiC/wiki), [Blog](http://00102400.xyz/blog/2020/06/24/pixic-bu-shu/)
+
+API文档：[API]([https://github.com/Coder-Sakura/PixiC/wiki/API%E6%96%87%E6%A1%A3](https://github.com/Coder-Sakura/PixiC/wiki/API文档)),  [Blog](http://00102400.xyz/blog/2020/07/08/pixicapi/)
 
 1. PixiC目前功能及后续功能：
 
