@@ -4,7 +4,7 @@ chardet==3.0.4
 idna==2.9
 imageio==2.8.0
 numpy==1.18.1
-Pillow==7.0.0
+Pillow==7.2.0
 requests==2.23.0
 selenium==3.141.0
 soupsieve==2.0
