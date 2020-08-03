@@ -13,6 +13,7 @@ from logstr import log_str
 from message import *
 from thread_pool import *
 
+
 class Bookmark(object):
 	def __init__(self):
 		self.Downloader = Down()
@@ -23,7 +24,7 @@ class Bookmark(object):
 		self.db = self.Downloader.db
 		self.class_name = self.__class__.__name__
 
-	def get_page_bookmark(self,offset):
+	def get_page_bookmark(self, offset):
 		"""
 		根据offset和limit获取收藏插画的pid
 		:params offset: 偏移量
@@ -57,15 +58,15 @@ class Bookmark(object):
 		更新机制:
 			获取最新收藏的10条插画id,与数据库中的记录进行比对
 			若最新收藏的10条插画id有一条在数据库中,则跳过;若不在则更新
-			本意上是以最快10分钟内收藏10条新作品这个标准作为界限
+			实际上是以最快10分钟内收藏10条新作品这个标准作为界限
 		"""
-		# 数据库开关关闭,直接更新
+
+		# 数据库开关若关闭,直接更新
 		if hasattr(self.db,"pool") == False:
 			log_str(UPDATE_INFO.format(self.class_name))
 			return True
 
 		res = self.get_page_bookmark(0)
-		print(res)
 
 		if res == UL_TEXT:
 			log_str(UPDATE_CHECK_ERROR_INFO.format(self.class_name))
@@ -73,10 +74,10 @@ class Bookmark(object):
 
 		if res == None:
 			log_str(UPDATE_CHECK_ERROR_INFO.format(self.class_name))
-			return False
+			return false
 			
 		# 验证前十张
-		for pid in res[0][:10]:
+		for pid in res[:10]:
 			if self.db.check_illust(pid,table="bookmark")[0] == False:
 				log_str(UPDATE_INFO.format(self.class_name))
 				return True
@@ -84,7 +85,7 @@ class Bookmark(object):
 			log_str(UPDATE_CANLE_INFO.format(self.class_name))
 			return False
 
-	def thread_by_illust(self,*args):
+	def thread_by_illust(self, *args):
 		pid = args[0]
 		try:
 			info = self.Downloader.get_illust_info(pid,extra="bookmark")

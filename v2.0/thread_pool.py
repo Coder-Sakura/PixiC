@@ -1,9 +1,11 @@
 # coding=utf8
 
 """
-一个基于thread和queue的线程池，以任务为队列元素，动态创建线程，重复利用线程，
-通过close和terminate方法关闭线程池。
+一个基于thread和queue的线程池,
+任务为队列元素,动态创建线程并重复利用.
+通过close和terminate关闭线程池.
 """
+
 import queue
 import threading
 import contextlib
@@ -30,7 +32,7 @@ def action(thread_name, arg):
     :param arg: 该函数需要的参数
     :return:
     """
-    # 模拟该函数执行了0.1秒
+    # 模拟执行
     time.sleep(0.1)
     print("第%s个任务调用了线程 %s，并打印了这条信息！" % (arg+1, thread_name))
 
@@ -178,7 +180,6 @@ class ThreadPool:
 if __name__ == '__main__':
     # 创建一个最多包含5个线程的线程池
     # pool = ThreadPool(5)
-    pool = ThreadPool(8)
 
     # 创建100个任务，让线程池进行处理
     # for i in range(100):

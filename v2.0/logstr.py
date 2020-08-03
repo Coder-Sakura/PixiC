@@ -6,6 +6,6 @@ Project: Pixiv_Crawler
 """
 import time
 
-def log_str(*args,end=None):
+def log_str(*args, end=None):
     for i in args:
         print('[{}] {}'.format(time.strftime("%Y-%m-%d %H:%M:%S"),i),end=end)

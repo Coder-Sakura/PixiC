@@ -1,29 +1,31 @@
+# coding=utf8
 import os
 import json
 import time
 from flask import Flask,request,jsonify
 
 from config import API_HOST,API_PORT,RANDOM_LIMIT,API_THREAD
-# from downer import Down
 from db import DBClient
 from message import *
 
 
 app = Flask(__name__)
-# Downloader= Down()
-# db = Downloader.db
-db = DBClient
+
+def api_main():
+	# Downloader= Down()
+	# db = Downloader.db
+	db = db_client()
+	app.run(API_HOST,API_PORT)
 
 # 首页
 @app.route('/api/v2')
 def index():
-	return "<h2>Now it's {} Welcome To PixiC API!</h2>".format(time.strftime("%Y-%m-%d %H:%M:%S"))
+	return "<h2>Now it's {}, Welcome To PixiC API!</h2>".format(time.strftime("%Y-%m-%d %H:%M:%S"))
 
 @app.route('/api/v2/get-info',methods=['GET','POST'])
 def get_info():
 	"""
 	查询指定pid的信息
-	pid 插画pid
 	"""
 	if request.method == "POST":
 		pid = request.form.get('pid',None)

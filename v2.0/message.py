@@ -6,6 +6,8 @@ author: coder_sakura
 """
 
 # ================================================
+VERSION = "2.1.1"
+VERSION_INFO = "==========PixiC v{}==========".format(VERSION)
 # db
 DB_INFO = "使用API需要开启数据库"
 DB_CONNECT_ERROR_INFO = "请确保Mysql在运行/配置好\n{}"
@@ -29,8 +31,8 @@ FOLLOW_ERROR_INFO = "{}:获取关注列表出错"
 FOLLOW_PAGE_ERROR_INFO = "{}:获取画师出错,第{}-{}位"
 FOLLOW_NO_ILLUSTS_INFO = "{}:{}(pid:{})无作品"
 FOLLOW_DATA_ERROR_INFO = "{}:获取画师数据出错 {}"
-UPDATE_USER_INFO = "{}:更新画师:{}(pid:{}) | 作品数:{} 最新作品:{}"
-NOW_USER_INFO = "{}:当前画师:{}(pid:{}) |作品数: {}"
+UPDATE_USER_INFO = "{}:{}更新画师:{}(pid:{}) | 作品数:{} 最新作品:{}"
+NOW_USER_INFO = "{}:{}当前画师:{}(pid:{}) |作品数: {}"
 
 # BM
 BOOKMARK_PAGE_ERROR_INFO = "{}:获取收藏出错: 第{}-{}张失败"

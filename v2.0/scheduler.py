@@ -1,12 +1,21 @@
+# coding=utf8
 import time
-# 多进程
 from multiprocessing import Process
 
-from api import app
-from bookmark import Bookmark
-from crawler import Crawler
+if PIXIV_API_ENABLED and DB_ENABLE:
+	from api import api_main
+
+if PIXIV_BOOKMARK_ENABLED:
+	from bookmark import Bookmark
+
+if PIXIV_CRAWLER_ENABLED:
+	from crawler import Crawler
+
 from config import *
 from login import client
+from logstr import log_str
+from message import VERSION_INFO
+
 
 class Scheduler(object):
 	def scheduler_crawler(self,limit=USERS_CYCLE):
@@ -20,12 +29,12 @@ class Scheduler(object):
 		
 	def scheduler_api(self):
 		"""
-		api
+		API
 		"""
 		# db.create_db(thread_num=API_THREAD)
 		app.run(API_HOST,API_PORT)
 
-	def scheduler_bookmark(self,limit=BOOKMARK_CYCLE):
+	def scheduler_bookmark(self, limit=BOOKMARK_CYCLE):
 		"""
 		收藏作品
 		"""
@@ -41,6 +50,7 @@ class Scheduler(object):
 		pass
 
 	def run(self):
+		log_str(VERSION_INFO)
 		# client更新cookie
 		client.check()
 

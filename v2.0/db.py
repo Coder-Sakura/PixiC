@@ -2,7 +2,7 @@
 import random
 import pymysql
 from DBUtils.PooledDB import PooledDB
-# fetchall结果转字典
+# fetchall查询结果转字典
 from pymysql.cursors import DictCursor
 
 from config import *
@@ -11,7 +11,7 @@ from message import *
 
 
 # 2019-11-24 05:56:33
-# 2020-04-22
+# 2020-04-22 06:51:23
 class db_client(object):
 	"""
 	关注画师-数据库流程:
@@ -31,7 +31,7 @@ class db_client(object):
 		4. 队列中,insert_illust 满足插入条件,向pixiv表中插入该pid的记录
 	"""
 
-	def __init__(self,thread_num=8):
+	def __init__(self, thread_num=8):
 		if DB_ENABLE == False:
 			return
 			
@@ -43,19 +43,21 @@ class db_client(object):
 		except pymysql.err.OperationalError as e:
 			log_str(DB_CONNECT_ERROR_INFO.format(e))
 			exit()
-		# self.create_db if flag == True
 
 	def get_conn(self):
 		"""
+		从数据库连接池中取出一个链接
+
 		DictCursor 返回结果由元组类型转为字典类型
 		res = function()
 		res[0][select_name]
 		"""
-		conn = self.pool.connection() # 需要数据库连接就是用connection()函数获取连接就好了
+		# connection()获取数据库连接
+		conn = self.pool.connection() 
 		cur = conn.cursor(DictCursor)
 		return conn,cur
 
-	def check_user(self,u):
+	def check_user(self, u):
 		"""
 		数据库中画师记录的latest_id与接口返回的latest_id是否一致
 		相同 --> False,不需要下载该画师
@@ -63,9 +65,9 @@ class db_client(object):
 		判断pxusers表是否含有该画师信息
 		无 --> 插入数据
 		有 --> null
+
 		:params u: 用户数据
 		:return: latest_id
-		出现mysql 1366报错,按照https://blog.csdn.net/qq_31122833/article/details/83992085解决
 		"""
 		conn,cur = self.get_conn()
 		# 查询画师记录sql
@@ -79,13 +81,13 @@ class db_client(object):
 		data = (
 			u["uid"],u["userName"],u["latest_id"],u["path"]
 				)
-		# 更新latest_id sql
 
 		# 确认数据库是否有该画师记录
 		cur.execute(sql_1,uid)
 		res = cur.fetchall()
 		e = res[0]["COUNT(uid)"]
 		# log_str("查询结果 :{}".format(e))
+
 		if e >= 1:
 			# 返回数据库中查询的latest_id
 			cur.execute(sql_3,uid)
@@ -100,7 +102,6 @@ class db_client(object):
 				log_str(e)
 				conn.rollback()
 				# 默认全更新
-				# return False
 				return u["latest_id"]
 			else:
 				return u["latest_id"]
@@ -108,11 +109,11 @@ class db_client(object):
 				cur.close()
 				conn.close()
 
-	def get_total(self,u):
+	def get_total(self, u):
 		"""
 		查询数据库中有多少条[画师uid]的数据
 		:params u: 作品数据
-		:return: d_total
+		:return: 画师作品数量
 		"""
 		conn,cur = self.get_conn()
 		sql = '''SELECT COUNT(*) FROM pixiv WHERE uid=%s'''
@@ -122,9 +123,11 @@ class db_client(object):
 		d_total = d["COUNT(*)"]
 		return d_total
 
-	def update_latest_id(self,u):
+	def update_latest_id(self, u):
 		"""
 		更新latest_id
+		:params u: 作品数据
+		:return:
 		"""
 		conn,cur = self.get_conn()
 		# 更新latest	_id sql
@@ -142,11 +145,14 @@ class db_client(object):
 			cur.close()
 			conn.close()
 
-	def check_illust(self,pid,table="pixiv"):
+	def check_illust(self, pid, table="pixiv"):
 		"""
 		查询数据库中是否有该id的作品
 		path为下载地址,不存在该记录时为None
-		:return : 是否存在该记录,path
+
+		:parmas pid: 作品pid
+		:parmas table: 操作数据表
+		:return: 是否存在该记录,path
 		"""
 		conn,cur = self.get_conn()
 		# 查询id sql
@@ -159,10 +165,11 @@ class db_client(object):
 		else:
 			return False,d["path"]
 
-	def insert_illust(self,u,table="pixiv"):
+	def insert_illust(self, u, table="pixiv"):
 		"""
-		data格式:{key:value,...}
-		:params datas 数据
+		:params u 数据
+		:parmas table: 操作数据表
+		:return: True/False
 		出现mysql 1366报错,按照https://blog.csdn.net/qq_31122833/article/details/83992085解决
 		"""
 		conn,cur = self.get_conn()
@@ -179,10 +186,6 @@ class db_client(object):
 				)
 		try:
 			cur.execute(sql,data)
-			# if len(data) == 1:
-			# 	cur.execute(sql,data)
-			# else:
-			# 	cur.executemany(sql,data)
 			conn.commit()
 		except Exception as e:
 			log_str(e)
@@ -195,18 +198,20 @@ class db_client(object):
 			cur.close()
 			conn.close()
 
-	def updata_illust(self,u,table="pixiv"):
+	def updata_illust(self, u, table="pixiv"):
 		"""
 		更新作品数据,主要是浏览数,收藏数,评论数,喜欢数,path
 		:params u:作品数据
+		:parmas table: 操作数据表
 		:return :
 		主要更新 viewCount bookmarkCount commentCount likeCount
 		"""
 		conn,cur = self.get_conn()
-		# 更新sql
+
 		# 更新前 72 32 23 0 81265370
 		# 更新后 1  1  1  1 81265370
 		# 快速查询 SELECT viewCount,bookmarkCount,likeCount,commentCount,pid FROM pixiv WHERE id=53312;
+		# 更新sql
 		sql = """UPDATE {} """.format(table) + """SET viewCount=%s,\
 				bookmarkCount=%s,likeCount=%s,commentCount=%s,path=%s WHERE pid=%s"""
 		# 更新数据
@@ -226,9 +231,12 @@ class db_client(object):
 			cur.close()
 			conn.close()
 
-	def select_illust(self,pid,table="pixiv"):
+	def select_illust(self, pid, table="pixiv"):
 		"""
 		查询作品数据
+		:params pid:作品pid
+		:parmas table: 操作数据表
+		:return :
 		"""
 		conn,cur = self.get_conn()
 		sql = """SELECT * FROM {} """.format(table) + """WHERE pid=%s"""
@@ -241,10 +249,11 @@ class db_client(object):
 		else:
 			return
 
-	def random_illust(self,table="pixiv",extra=None):
+	def random_illust(self, table="pixiv", extra=None):
 		"""
-		:params table: 指定哪个表
+		:parmas table: 操作数据表
 		:params extra: 原创,碧蓝航线 最多2个,额外指定tag
+
 		随机返回1条数据,根据extra返回对应的标签
 		不返回urls,path,t2.id等非必要字段或中间产物
 		"""
@@ -276,11 +285,14 @@ class db_client(object):
 			del r[0]["urls"],r[0]["path"],r[0]["t2.id"]
 			return r[0]
 
-	def pixiv_re_proxy(self,u):
+	def pixiv_re_proxy(self, u):
 		"""
 		根据作品数据反代
 		动图单图:pixiv.cat/{id}.{Suffix}
 		多图:pixiv.cat/{id}-{num}.{Suffix}
+
+		:params u:作品数据
+		:returnL 反代链接
 		"""
 		h = "https://pixiv.cat/"
 		pid = u["pid"]
@@ -293,4 +305,4 @@ class db_client(object):
 		return reverse_url
 
 
-DBClient = db_client()
+# DBClient = db_client()

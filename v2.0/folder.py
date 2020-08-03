@@ -17,13 +17,13 @@ class Folder(object):
 		isExists = os.path.exists(self.bk_path)
 		if not isExists:os.makedirs(self.bk_path)
 
-	def select_user_path(self,uid):
+	def select_user_path(self, uid):
 		for folder in os.listdir(self.path):
 			if str(uid) == folder.split('--')[0]:
 				user_path = os.path.join(self.path,folder)
 				return user_path
 
-	def mkdir_painter(self,info):
+	def mkdir_painter(self, info):
 		'''
 		创建画师文件夹
 		:parmas info 作品数据信息
@@ -46,7 +46,7 @@ class Folder(object):
 		os.makedirs(user_path)
 		return user_path
 
-	def mkdir_illusts(self,user_path,pid):
+	def mkdir_illusts(self, user_path,pid):
 		'''
 		创建作品illusts文件夹
 		:parmas user_path 画师路径/收藏作品主目录

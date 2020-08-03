@@ -4,6 +4,7 @@
 time: 2020-05-11
 author: coder_sakura
 """
+
 import os
 import json
 import imageio
@@ -15,12 +16,13 @@ from requests.packages.urllib3.exceptions import InsecureRequestWarning
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
 from config import USERS_LIMIT,BOOKMARK_LIMIT
-from db import DBClient
+from db import db_client
 from folder import file_manager
 from logstr import log_str
 from login import client
 from message import *
 from config import *
+
 
 class Down(object):
 	def __init__(self):
@@ -28,7 +30,7 @@ class Down(object):
 		self.client = client
 		self.jar = client.set_cookie()
 		self.file_manager = file_manager
-		self.db = DBClient
+		self.db = db_client()
 		self.headers = {
 			# "Connection": "keep-alive",
 			"Host": "www.pixiv.net",	# 0416添加
@@ -46,13 +48,14 @@ class Down(object):
 		self.zip_url = "https://www.pixiv.net/ajax/illust/{}/ugoira_meta"
 		self.class_name = self.__class__.__name__
 
-	def baseRequest(self,options,data=None,params=None,retry_num=5):
+	def baseRequest(self, options, data=None, params=None, retry_num=5):
 		'''
 	    :params options 请求参数    {"method":"get/post","url":"example.com"}
 	    :params data
 	    :params params
 	    :params retry_num 重试次数
 	    :return response对象/False
+
 	    如果options中有定义了headers参数,则使用定义的;否则使用init中初始化的headers
 
 	    下面这行列表推导式作用在于：
@@ -90,13 +93,15 @@ class Down(object):
 			else:
 				log_str(DM_NETWORK_ERROR_INFO.format(self.class_name,options["url"],e))
 
-	def get_illust_info(self,pid,extra=None):
+	def get_illust_info(self, pid, extra=None):
 		'''
 		:parmas pid: 作品id,int类型
 		:parmas extra: 额外模式,用于对各种模式做一些特殊处理
 		比如关注画师和收藏作品2个模式之间有些许不同
 		默认None,extra为bookmark时,为bookmark模式
+
 		:return data: 作品数据,字典
+
 		不存在的id:https://www.pixiv.net/ajax/illust/78914404
 		多图 https://www.pixiv.net/ajax/illust/78997178
 		动图 https://www.pixiv.net/ajax/illust/80373423
@@ -113,7 +118,6 @@ class Down(object):
 			# 出错则不更新,不下载;
 			return None
 		
-
 		# 数据
 		info = resp["body"]
 		uid = int(info["userId"])
@@ -200,11 +204,12 @@ class Down(object):
 
 		return data
 
-	def filter(self,data):
+	def filter(self, data):
 		"""
 		根据pageCount和illustType判定作品id类型
 		:param data: 作品数据
 		:return:
+
 		======以下为判定规则========
 				  单图 多图 动图 漫画单图 漫画多图
 		pageCount  1	 n 	  1    1      n
@@ -222,7 +227,7 @@ class Down(object):
 		else:
 			self.illustMulti(data)
 
-	def illustSingle(self,data):
+	def illustSingle(self, data):
 		"""
 		下载filter判定的单图id
 		:param data: 作品数据
@@ -243,7 +248,7 @@ class Down(object):
 			log_str(DM_DOWNLOAD_SUCCESS_INFO.format(self.class_name,name,self.size2Mb(size)))
 			time.sleep(1)
 
-	def illustMulti(self,data):
+	def illustMulti(self, data):
 		"""
 		下载filter判定的多图id
 		:param data: 作品数据
@@ -278,7 +283,12 @@ class Down(object):
 				log_str(DM_DOWNLOAD_SUCCESS_INFO.format(self.class_name,name,self.size2Mb(size)))
 				time.sleep(1)
 
-	def illustGif(self,data):
+	def illustGif(self, data):
+		"""
+		下载filter判定的动图图id
+		:param data: 作品数据
+		:return: 
+		"""
 		path_ = data["path"]
 		# 动图info url
 		zipInfoUrl = self.zip_url.format(data["pid"])
@@ -321,13 +331,19 @@ class Down(object):
 				os.remove(os.path.join(path_,j))
 			time.sleep(1)
 
-	def downSomething(self,path,content):
+	def downSomething(self, path, content):
+		"""
+		二进制数据写入图片
+		:params path: 图片路径
+		:params content: 二进制数据
+		:return : 写入大小
+		"""
 		# name考虑切分,或者传参进来
 		with open(path,"wb") as f:
 			f.write(content)
 		return os.path.getsize(path)
 
-	def size2Mb(self,size):
+	def size2Mb(self, size):
 		"""
 		:params size: 文件大小,字节数
 		:return: 

@@ -13,6 +13,7 @@ from logstr import log_str
 from message import *
 from thread_pool import *
 
+
 class Crawler(object):
 	def __init__(self):
 		self.Downloader = Down()
@@ -101,9 +102,9 @@ class Crawler(object):
 
 		return users_info_list
 
-	def get_user_illust(self,u):
+	def get_user_illust(self, u):
 		"""
-		:params u: 画师信息,字段包括:uid,userName,latest_id
+		:params u: 画师信息--字典
 		:return user_illust_list: 画师信息包括:uid,userName,latest_id,path
 		"""
 		u["path"] = self.file_manager.mkdir_painter(u)
@@ -120,7 +121,7 @@ class Crawler(object):
 		else:
 			return user_illust_list
 
-	def thread_by_illust(self,*args):
+	def thread_by_illust(self, *args):
 		"""
 		if isExists == False and path == None:
 			# 数据库没有记录也没有下载,
@@ -183,7 +184,7 @@ class Crawler(object):
 
 		try:
 			pool = ThreadPool(8)
-			for u in u_list:
+			for i,u in enumerate(u_list):
 				all_illust = self.get_user_illust(u)
 				if hasattr(self.db,"pool"):
 					latest_id = self.db.check_user(u)
@@ -191,9 +192,10 @@ class Crawler(object):
 				else:
 					latest_id,d_total = 0,0
 
+				position = "({}/{})".format(i+1,len(u_list))
 				if u["latest_id"] >= latest_id and d_total < len(all_illust):
 					# 满足条件更新
-					log_str(UPDATE_USER_INFO.format(self.class_name,u["userName"],u["uid"],len(all_illust),u["latest_id"]))
+					log_str(UPDATE_USER_INFO.format(position,self.class_name,u["userName"],u["uid"],len(all_illust),u["latest_id"]))
 					# log_str("更新:{}|{} {} {} {}".format(u["uid"],u["latest_id"],latest_id,d_total,len(all_illust)))
 					if hasattr(self.db,"pool"):
 						self.db.update_latest_id(u)
@@ -203,7 +205,7 @@ class Crawler(object):
 
 					time.sleep(3)
 				else:
-					log_str(NOW_USER_INFO.format(self.class_name,u["userName"],u["uid"],len(all_illust)))
+					log_str(NOW_USER_INFO.format(position,self.class_name,u["userName"],u["uid"],len(all_illust)))
 					continue
 
 			pool.close()
