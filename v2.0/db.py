@@ -2,7 +2,6 @@
 import random
 import pymysql
 from DBUtils.PooledDB import PooledDB
-# fetchall查询结果转字典
 from pymysql.cursors import DictCursor
 
 from config import *
@@ -170,7 +169,6 @@ class db_client(object):
 		:params u 数据
 		:parmas table: 操作数据表
 		:return: True/False
-		出现mysql 1366报错,按照https://blog.csdn.net/qq_31122833/article/details/83992085解决
 		"""
 		conn,cur = self.get_conn()
 
@@ -208,9 +206,6 @@ class db_client(object):
 		"""
 		conn,cur = self.get_conn()
 
-		# 更新前 72 32 23 0 81265370
-		# 更新后 1  1  1  1 81265370
-		# 快速查询 SELECT viewCount,bookmarkCount,likeCount,commentCount,pid FROM pixiv WHERE id=53312;
 		# 更新sql
 		sql = """UPDATE {} """.format(table) + """SET viewCount=%s,\
 				bookmarkCount=%s,likeCount=%s,commentCount=%s,path=%s WHERE pid=%s"""

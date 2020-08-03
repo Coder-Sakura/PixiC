@@ -2,6 +2,11 @@
 import time
 from multiprocessing import Process
 
+from config import *
+from login import client
+from logstr import log_str
+from message import VERSION_INFO
+
 if PIXIV_API_ENABLED and DB_ENABLE:
 	from api import api_main
 
@@ -10,12 +15,6 @@ if PIXIV_BOOKMARK_ENABLED:
 
 if PIXIV_CRAWLER_ENABLED:
 	from crawler import Crawler
-
-from config import *
-from login import client
-from logstr import log_str
-from message import VERSION_INFO
-
 
 class Scheduler(object):
 	def scheduler_crawler(self,limit=USERS_CYCLE):
@@ -32,7 +31,8 @@ class Scheduler(object):
 		API
 		"""
 		# db.create_db(thread_num=API_THREAD)
-		app.run(API_HOST,API_PORT)
+		# app.run(API_HOST,API_PORT)
+		api_main()
 
 	def scheduler_bookmark(self, limit=BOOKMARK_CYCLE):
 		"""

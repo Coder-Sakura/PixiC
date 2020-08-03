@@ -33,7 +33,7 @@ class Down(object):
 		self.db = db_client()
 		self.headers = {
 			# "Connection": "keep-alive",
-			"Host": "www.pixiv.net",	# 0416添加
+			"Host": "www.pixiv.net",
 			"referer": "https://www.pixiv.net/",
 			"origin": "https://accounts.pixiv.net",
 			"accept-language": "zh-CN,zh;q=0.9",	# 返回translation,中文翻译的标签组
@@ -101,11 +101,6 @@ class Down(object):
 		默认None,extra为bookmark时,为bookmark模式
 
 		:return data: 作品数据,字典
-
-		不存在的id:https://www.pixiv.net/ajax/illust/78914404
-		多图 https://www.pixiv.net/ajax/illust/78997178
-		动图 https://www.pixiv.net/ajax/illust/80373423
-		单图 https://www.pixiv.net/ajax/illust/77719030
 		'''
 		info_url = self.ajax_illust.format(pid)
 		resp = json.loads(self.baseRequest(options={"url":info_url}).text)
@@ -188,19 +183,13 @@ class Down(object):
 		不满足条件 -->  ---      path=None      入库
 		"""
 		# 获取作品下载路径
-		# if bookmarkCount > 0:
-		# 336个画师,作品全下载共120G+
-		# 限制收藏>3000,共45G
 		if bookmarkCount > LIMIT:
 			path = self.file_manager.mkdir_illusts(user_path,pid)
 			data["path"] = path
-			# 下载器启动
-			# log_str("id:{} 作品正在下载".format(pid))
 			self.filter(data)
 		else:
 			path = "None"
 			data["path"] = path
-			# log_str("id:{} 作品不满足条件,不下载".format(pid))
 
 		return data
 

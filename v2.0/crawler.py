@@ -20,8 +20,6 @@ class Crawler(object):
 		self.user_id = self.Downloader.client.user_id
 		self.base_request = self.Downloader.baseRequest
 
-		# # 作品数据
-		# self.ajax_illust = "https://www.pixiv.net/ajax/illust/{}"
 		# 画师列表
 		self.follw_url = "https://www.pixiv.net/ajax/user/{}/following".format(self.user_id)
 		# 作品链接,存数据库
@@ -123,25 +121,7 @@ class Crawler(object):
 
 	def thread_by_illust(self, *args):
 		"""
-		if isExists == False and path == None:
-			# 数据库没有记录也没有下载,
-			# 正常流程 
-			pass
-
-		if isExists == True and path == None:
-			# 数据库有记录但没有下载,
-			# 验证收藏数并下载
-			pass
-
-		if isExists == True and path != None:
-			# 数据库有记录,也有下载,ok的
-			# config设置一个参数,控制每个轮询是否更新已有作品数据
-			pass
-
-		if isExists == False and path != None:
-			# 下载了,但数据库没有记录
-			# 不可能发生,下载了有path,也得insert才有数据,不然查询到的path应该是None
-			pass
+		线程任务函数
 		"""
 		pid = args[0]
 		try:
@@ -196,7 +176,6 @@ class Crawler(object):
 				if u["latest_id"] >= latest_id and d_total < len(all_illust):
 					# 满足条件更新
 					log_str(UPDATE_USER_INFO.format(position,self.class_name,u["userName"],u["uid"],len(all_illust),u["latest_id"]))
-					# log_str("更新:{}|{} {} {} {}".format(u["uid"],u["latest_id"],latest_id,d_total,len(all_illust)))
 					if hasattr(self.db,"pool"):
 						self.db.update_latest_id(u)
 

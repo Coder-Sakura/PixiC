@@ -2,6 +2,10 @@
 
 API文档：[API](https://github.com/Coder-Sakura/PixiC/wiki/API文档),  [Blog](http://00102400.xyz/blog/2020/07/08/pixicapi/)
 
+[运行截图](https://github.com/Coder-Sakura/PixiC/wiki/运行截图)戳这里
+
+
+
 1. PixiC目前功能及后续功能：
 
 - [x] 1. 获取Chrome上登录的Pixiv账户信息
@@ -32,9 +36,5 @@ API文档：[API](https://github.com/Coder-Sakura/PixiC/wiki/API文档),  [Blog]
 
 
 
-2. `v1.0` 主要是追求简单，简单配置后，回车就能完成下载 关注画师的作品/收藏的作品
-3. `v2.0`主要是追求全面以及API，方便对接机器人、下载插画和数据库。
-4. 部分人群对数据无要求（能下载就行），对于数据库，目前在考虑2种情况：
-   1. 数据库分离做成`v1.0`和`v2.0`，2个版本，一个需要一个不需要
-   2. `v2.0`中开放相关接口来实现，放弃`v1.0`版本。
-
++ V1.0 简单，有一段时间未维护，目前重心在2.0版本
++ **V2.0 更健壮，功能更多。旨在简单配置后，敲下回车即能获取到Pixiv账号的数据和作品**

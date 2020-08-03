@@ -5,16 +5,17 @@ import time
 from flask import Flask,request,jsonify
 
 from config import API_HOST,API_PORT,RANDOM_LIMIT,API_THREAD
-from db import DBClient
+from db import db_client
 from message import *
 
 
 app = Flask(__name__)
+db = ""
 
 def api_main():
-	# Downloader= Down()
-	# db = Downloader.db
-	db = db_client()
+	DB_client = db_client()
+	global db
+	db = DB_client
 	app.run(API_HOST,API_PORT)
 
 # 首页
@@ -115,9 +116,4 @@ def error500(error):
 	return API_ERROR
 
 if __name__ == '__main__':
-	# 通过设置app.run()的参数，来达到多线程的效果
-	# threaded True开启,默认为False
-	# processes True开启,默认是False,开启默认是一个进程
-	# 建议flask开启多线程处理并发,通过 UWSGI/Gunicorn 之类的调度器去控制并发数量
-	# app.debug = True
 	app.run(API_HOST,API_PORT)
