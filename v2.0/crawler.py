@@ -44,7 +44,8 @@ class Crawler(object):
 			r = json.loads(self.base_request({"url":self.follw_url},params=params).text)
 		except Exception as e:
 			# 网络请求出错
-			log_str(FOLLOW_PAGE_ERROR_INFO.foramt(self.class_name,offset,offset+100))
+			log_str(FOLLOW_PAGE_ERROR_INFO.format(self.class_name,offset,offset+100))
+			log_str(e)
 			return None
 		else:
 			# 未登录
@@ -62,16 +63,25 @@ class Crawler(object):
 		"""
 		offset = 0
 		users_info_list = []
+		err_count = 0
+		err_limit = 10
 
 		while True:
 			u_list = self.get_page_users(offset)
 
 			# 网络请求出错
 			if u_list == None:
-				continue
+				# 累计10次网络错误
+				if err_count < err_limit:
+					offset += 100
+					err_count += 1
+					continue
+				else:
+					break
 
 			# 未登录
 			if u_list == UL_TEXT:
+				users_info_list = UL_TEXT
 				break
 
 			# 获取所有关注完毕
@@ -91,10 +101,9 @@ class Crawler(object):
 					# 无作品不做动作
 					continue	
 				else:
-					user_info["latest_id"] = int(u["illusts"][0]["illustId"])
+					user_info["latest_id"] = int(u["illusts"][0]["id"])
 
 				users_info_list.append(user_info)
-
 
 			offset += 100
 
@@ -109,8 +118,8 @@ class Crawler(object):
 		illust_url = self.all_illust_url.format(u["uid"])
 		try:
 			u_json = json.loads(self.base_request({"url":illust_url}).text)["body"]
-			i = u_json["illusts"]
-			m = u_json["manga"]
+			i = u_json.get("illusts",[])
+			m = u_json.get("manga",[])
 			# 列表推导式合并取keys,转为list
 			user_illust_list = list([dict(i) if len(m) == 0 else dict(i,**m)][0].keys())
 		except Exception as e:
@@ -138,29 +147,39 @@ class Crawler(object):
 		if hasattr(self.db,"pool") == False:
 			return 
 
-		isExists,path = self.db.check_illust(pid)
-		# 数据库无该记录
-		if isExists == False:
-			res = self.db.insert_illust(info)
-			if res == False:
-				log_str(INSERT_FAIL_INFO.format(self.class_name,pid))
+		try:
+			isExists,path = self.db.check_illust(pid)
+			# 数据库无该记录
+			if isExists == False:
+				res = self.db.insert_illust(info)
+				if res == False:
+					log_str(INSERT_FAIL_INFO.format(self.class_name,pid))
+				else:
+					log_str(INSERT_SUCCESS_INFO.format(self.class_name,pid))
+			# 数据库有该记录
 			else:
-				log_str(INSERT_SUCCESS_INFO.format(self.class_name,pid))
-		# 数据库有该记录
-		else:
-			self.db.updata_illust(info)
+				self.db.update_illust(info)
+		except Exception as e:
+			log_str("thread_by_illust|Exception {}".format(e))
 
 	def run(self):
 		log_str(BEGIN_INFO.format(self.class_name))
 		try:
 			u_list = self.get_users()
 		except Exception as e:
-			print(e)
+			log_str(e)
 			log_str(FOLLOW_ERROR_INFO.format(self.class_name))
 			log_str(SLEEP_INFO.format(self.class_name))
 			return
 		else:
-			log_str(FOLLOW_SUCCESS_INFO.format(self.class_name,len(u_list)))
+			if u_list != []:
+				log_str(FOLLOW_SUCCESS_INFO.format(self.class_name,len(u_list)))
+			elif u_list == []:
+				log_str(NO_FOLLOW_USERS.format(self.class_name))
+				return 
+			elif u_list == UL_TEXT:
+				log_str(UNLOGIN_INFO.format(self.class_name))
+				return 
 
 		try:
 			pool = ThreadPool(8)
@@ -179,15 +198,14 @@ class Crawler(object):
 					if hasattr(self.db,"pool"):
 						self.db.update_latest_id(u)
 
-					for pid in all_illust:
-						pool.put(self.thread_by_illust,(pid,),callback)
+					# for pid in all_illust:
+					# 	pool.put(self.thread_by_illust,(pid,),callback)
 
-					time.sleep(3)
+					time.sleep(5)
 				else:
 					log_str(NOW_USER_INFO.format(position,self.class_name,u["userName"],u["uid"],len(all_illust)))
 					continue
 
-			pool.close()
 		except Exception as e:
 			log_str("Exception {}".format(e))
 			pool.close()

@@ -1,7 +1,9 @@
 # coding=utf8
+import os
 import random
 import pymysql
 from DBUtils.PooledDB import PooledDB
+# DictCursor 使返回结果由元组类型转为字典类型
 from pymysql.cursors import DictCursor
 
 from config import *
@@ -9,8 +11,6 @@ from logstr import log_str
 from message import *
 
 
-# 2019-11-24 05:56:33
-# 2020-04-22 06:51:23
 class db_client(object):
 	"""
 	关注画师-数据库流程:
@@ -20,25 +20,30 @@ class db_client(object):
 		2. get_total 查询pixiv表中有多少表该画师id字段信息
 		3. update_latest_id 符合更新条件,更新pxusers表中该画师id的最新插画id
 		4. 队列中,check_illust 查询pixiv表中是否有该pid的记录
-		5. 队列中,updata_illust 每次作品网络请求,都会进行该pid数据的更新
+		5. 队列中,update_illust 每次作品网络请求,都会进行该pid数据的更新
 		6. 队列中,insert_illust 满足插入条件,向pixiv表中插入该pid的记录
 
 	收藏作品-数据库流程:
 		1. 判断更新条件
 		2. 队列中,check_illust 查询pixiv表中是否有该pid的记录
-		3. 队列中,updata_illust 每次作品网络请求,都会进行该pid数据的更新
+		3. 队列中,update_illust 每次作品网络请求,都会进行该pid数据的更新
 		4. 队列中,insert_illust 满足插入条件,向pixiv表中插入该pid的记录
 	"""
 
 	def __init__(self, thread_num=8):
+		self.class_name = self.__class__.__name__
 		if DB_ENABLE == False:
 			return
-			
-		log_str(DB_INST)
+
+		log_str(DB_INST.format(self.__class__.__name__))
 		try:
-			self.pool = PooledDB(
-			    pymysql,thread_num,host=DB_HOST,user=DB_USER,
-			    passwd=DB_PASSWD,db=DB_DATABASE,port=DB_PORT,charset=DB_CHARSET) # 5为连接池里的最少连接数
+			self.pool = PooledDB(		
+			    creator=pymysql,
+			    maxconnections=thread_num,	# 连接池允许的最大连接
+			    mincached=1,	# 连接池中的初始空闲连接数
+			    maxcached=1,	# 连接池中最大闲置连接数
+			    host=DB_HOST,user=DB_USER,passwd=DB_PASSWD,db=DB_DATABASE,port=DB_PORT,charset=DB_CHARSET
+			)
 		except pymysql.err.OperationalError as e:
 			log_str(DB_CONNECT_ERROR_INFO.format(e))
 			exit()
@@ -46,10 +51,6 @@ class db_client(object):
 	def get_conn(self):
 		"""
 		从数据库连接池中取出一个链接
-
-		DictCursor 返回结果由元组类型转为字典类型
-		res = function()
-		res[0][select_name]
 		"""
 		# connection()获取数据库连接
 		conn = self.pool.connection() 
@@ -115,11 +116,12 @@ class db_client(object):
 		:return: 画师作品数量
 		"""
 		conn,cur = self.get_conn()
-		sql = '''SELECT COUNT(*) FROM pixiv WHERE uid=%s'''
+		sql = '''SELECT COUNT(1) FROM pixiv WHERE uid=%s'''
 		data = u["uid"]
 		cur.execute(sql,data)
 		d = cur.fetchall()[0]
-		d_total = d["COUNT(*)"]
+		# d_total = d["COUNT(*)"]
+		d_total = d["COUNT(1)"]
 		return d_total
 
 	def update_latest_id(self, u):
@@ -138,31 +140,58 @@ class db_client(object):
 			cur.execute(sql,data)
 			conn.commit()
 		except Exception as e:
-			prnit(e)
+			log_str(e)
 			conn.rollback()
 		finally:
 			cur.close()
 			conn.close()
 
-	def check_illust(self, pid, table="pixiv"):
+	def check_illust(self, value, key="pid", table="pixiv", database=None):
 		"""
-		查询数据库中是否有该id的作品
-		path为下载地址,不存在该记录时为None
-
-		:parmas pid: 作品pid
-		:parmas table: 操作数据表
-		:return: 是否存在该记录,path
+		查询数据库中是否有该id的作品,table为非pixiv,bookmark时采用通用sql		
+		:parmas key: 对应字段名
+		:parmas value: 对应记录值
+		:parmas table: 数据表
+		:return: (True,path)/(False,"")
+		Result--fetchall
+			data in db: [{'COUNT(1)': 1, 'path': 'None'}]
+			data not in db: ()
 		"""
 		conn,cur = self.get_conn()
+		if key == "":
+			return False,""
+
+		if value == "":
+			return False,""
+
+		# 切换数据库
+		if database != None:
+			conn.select_db(database)
+
 		# 查询id sql
-		sql = """SELECT COUNT(*),path FROM {} """.format(table) + """WHERE pid=%s"""
-		data = (pid)
-		cur.execute(sql,data)
-		d = cur.fetchall()[0]
-		if d["COUNT(*)"] >= 1:
-			return True,d["path"]
+		if table in ["pixiv","bookmark"]:
+			# path为下载地址,不存在该记录时为None
+			sql = """SELECT COUNT(1),path FROM {} """.format(table) + """WHERE {}=%s GROUP BY path""".format(key)
 		else:
-			return False,d["path"]
+			sql = """SELECT COUNT(1) FROM {} """.format(table) + """WHERE {}=%s""".format(key)
+		# log_str(sql)
+		data = (value)
+		try:
+			cur.execute(sql,data)
+		except Exception as e:
+			log_str("{}:check_illust | {}".format(self.class_name),e)
+			return False,""
+		else:
+			# 未使用GROUP BY path,非严格模式报1140
+			# 使用GROUP BY path,不存在对应pid记录时,fetchall结果为()
+			d = cur.fetchall()
+			if d != () and d[0]["COUNT(1)"] >= 1:
+				return True,d[0].get("path","")
+			else:
+				return False,""
+		finally:
+			cur.close()
+			conn.close()
 
 	def insert_illust(self, u, table="pixiv"):
 		"""
@@ -187,7 +216,7 @@ class db_client(object):
 			conn.commit()
 		except Exception as e:
 			log_str(e)
-			log_str(u)
+			# log_str(u)
 			conn.rollback()
 			return False
 		else:
@@ -196,7 +225,7 @@ class db_client(object):
 			cur.close()
 			conn.close()
 
-	def updata_illust(self, u, table="pixiv"):
+	def update_illust(self, u, table="pixiv"):
 		"""
 		更新作品数据,主要是浏览数,收藏数,评论数,喜欢数,path
 		:params u:作品数据
@@ -206,6 +235,9 @@ class db_client(object):
 		"""
 		conn,cur = self.get_conn()
 
+		# 更新前 72 32 23 0 81265370
+		# 更新后 1  1  1  1 81265370
+		# 快速查询 SELECT viewCount,bookmarkCount,likeCount,commentCount,pid FROM pixiv WHERE id=53312;
 		# 更新sql
 		sql = """UPDATE {} """.format(table) + """SET viewCount=%s,\
 				bookmarkCount=%s,likeCount=%s,commentCount=%s,path=%s WHERE pid=%s"""
@@ -217,7 +249,7 @@ class db_client(object):
 			cur.execute(sql,data)
 			conn.commit()
 		except Exception as e:
-			log_str(DB_UPDATE_ILLUST_ERROR_INF.format(self.__class__.__name__,u["pid"],e))
+			log_str(DB_UPDATE_ILLUST_ERROR_INF.format(self.class_name,u["pid"],e))
 			conn.rollback()
 			return False
 		else:
@@ -228,7 +260,7 @@ class db_client(object):
 
 	def select_illust(self, pid, table="pixiv"):
 		"""
-		查询作品数据
+		查询作品数据,对接API接口方法
 		:params pid:作品pid
 		:parmas table: 操作数据表
 		:return :
@@ -236,49 +268,59 @@ class db_client(object):
 		conn,cur = self.get_conn()
 		sql = """SELECT * FROM {} """.format(table) + """WHERE pid=%s"""
 		data = (pid,)
-		cur.execute(sql,data)
-		r = cur.fetchall()
-		if len(r) != 0:
-			res = r[0]
-			return res
-		else:
+		try:
+			cur.execute(sql,data)
+		except Exception as e:
+			log_str(e)
 			return
+		else:
+			r = cur.fetchall()
+			if len(r) != 0:
+				# API处增加[0]下标
+				# res = r[0]
+				return r
+			else:
+				return
+		finally:
+			cur.close()
+			conn.close()
 
-	def random_illust(self, table="pixiv", extra=None):
+	def random_illust(self,
+			extra=None, 
+			table="pixiv", 
+			random_bookmark_enable=False
+		):
 		"""
-		:parmas table: 操作数据表
-		:params extra: 原创,碧蓝航线 最多2个,额外指定tag
+		对接API-p_random接口
+		:params extra: tag组 原创,碧蓝航线
+		:parmas table: 数据表
+		:params random_bookmark_enable: 
+		是否返回小于RANDOM_BOOKMARK_LIMIT收藏数的作品
 
-		随机返回1条数据,根据extra返回对应的标签
-		不返回urls,path,t2.id等非必要字段或中间产物
+		返回符合条件的所有数据
+		删除urls,path,t2.id等非必要字段/中间字段
 		"""
 		conn,cur = self.get_conn()
-		sql = """\
-		SELECT * FROM {} AS t1 """.format(table) + \
-		"""JOIN (SELECT ROUND(RAND() * ((SELECT MAX(id) FROM {})-""".format(table) + \
-		"""(SELECT MIN(id) FROM {}))+""".format(table) + \
-		"""(SELECT MIN(id) FROM {})) AS id) AS t2 """.format(table) + \
-		"""WHERE t1.id >= t2.id \
-		"""
+		sql = """SELECT pid FROM {} WHERE 1 = 1 """.format(table)
+		# tag搜索
 		e = """AND tag LIKE "%{}%" """
-		# 默认是取收藏大于3000的
-		b = " "
-		if RANDOM_BOOKMARK_ENABLE:
-			b = """AND bookmarkCount > {} """.format(RANDOM_BOOKMARK_LIMIT)
-		limit = """ORDER BY t1.id LIMIT 1"""
-
+		
 		if extra:
 			ex = extra.split(",")[:2]
 			for i in ex:
 				sql = sql + e.format(i)
-		s = sql + b + limit
-		cur.execute(s)
-		r = cur.fetchall()
-		if len(r) == 0:
-			return None
+
+		# 默认关闭取收藏大于3000
+		if random_bookmark_enable:
+			b = """AND bookmarkCount > {} """.format(RANDOM_BOOKMARK_LIMIT)
+			sql += b
+
+		cur.execute(sql)
+		pid_list = cur.fetchall()
+		if len(pid_list) == 0:
+			return []
 		else:
-			del r[0]["urls"],r[0]["path"],r[0]["t2.id"]
-			return r[0]
+			return pid_list
 
 	def pixiv_re_proxy(self, u):
 		"""
@@ -295,9 +337,15 @@ class db_client(object):
 		if u["pageCount"] > 1:
 			num = random.randint(1,u["pageCount"])
 			reverse_url = "{}{}-{}.{}".format(h,pid,num,suffix)
+			# reverse_url = u["original"].replace(d,h)
 		else:
 			reverse_url = "{}{}.{}".format(h,pid,suffix)
+			# reverse_url = u["original"].replace(d,h)
 		return reverse_url
+
+	# TODO
+	def insert2suolink(self, data, table="suolink", database=None):
+		pass
 
 
 # DBClient = db_client()

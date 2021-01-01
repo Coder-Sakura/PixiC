@@ -7,8 +7,9 @@ author: coder_sakura
 
 import os
 import json
-import imageio
 import time
+import random
+import imageio
 import zipfile
 import requests
 # 强制取消警告
@@ -26,9 +27,10 @@ from config import *
 
 class Down(object):
 	def __init__(self):
+		self.class_name = self.__class__.__name__
 		self.se = requests.session()
 		self.client = client
-		self.jar = client.set_cookie()
+		self.cookie_list = client.subprocess_check()
 		self.file_manager = file_manager
 		self.db = db_client()
 		self.headers = {
@@ -46,45 +48,37 @@ class Down(object):
 		self.ajax_illust = "https://www.pixiv.net/ajax/illust/{}"
 		# 动图的zip包下载地址
 		self.zip_url = "https://www.pixiv.net/ajax/illust/{}/ugoira_meta"
-		self.class_name = self.__class__.__name__
+		# log_str("user_id",self.client.user_id)
 
 	def baseRequest(self, options, data=None, params=None, retry_num=5):
 		'''
-	    :params options 请求参数    {"method":"get/post","url":"example.com"}
-	    :params data
-	    :params params
-	    :params retry_num 重试次数
-	    :return response对象/False
+	    :params options: 请求参数,暂时只用到headers和url
+	    :params data: Post
+	    :params params: Get
+	    :params retry_num: 重试次数
+	    :return: response对象/False
 
-	    如果options中有定义了headers参数,则使用定义的;否则使用init中初始化的headers
-
-	    下面这行列表推导式作用在于：
-	    添加referer时,referer需要是上一个页面的url,比如:画师/作品页面的url时,则可以自定义请求头
-	    demo如下:
+	    列表推导式作用在于: 优先使用options中的headers,否则使用self.headers
+	    比如：添加referer,referer需要是上一个页面的url,则可以自定义请求头
 	    demo_headers = headers.copy()
 	    demo_headers['referer']  = 'www.example.com'
-	    options ={
-	        "method":"get",
-	        "url":"origin_url",
-	        "headers":demo_headers
-	    }
+	    options ={"url":"origin_url","headers":demo_headers}
 	    baseRequest(options=options)
-	    这样baseRequest中使用的headers则是定制化的headers,而非init中初始化的默认headers了
 	    '''
-		# log_str(options["url"])
 		base_headers = [options["headers"] if "headers" in options.keys() else self.headers][0]
 
 		try:
-	    	# if options["method"].lower() == "get":
-	    	# 网络请求函数get、post请求,暂时不判断method字段,待后续更新
+			# if options["method"].lower() == "get":
+			# 网络请求函数get、post请求,暂时不判断method字段,待后续更新
+			# log_str("cookie_list {}".format(len(self.cookie_list)))
 			response = self.se.get(
-					options["url"],
-					data = data,
-					params = params,
-					cookies = self.jar,
-					headers = base_headers,
-					verify = False,
-					timeout = 10,
+	    			options["url"],
+	    			data = data,
+	    			params = params,
+	    			cookies = random.choice(self.cookie_list),
+	    			headers = base_headers,
+	    			verify = False,
+	    			timeout = 10,
 				)
 			return response
 		except  Exception as e:
@@ -93,14 +87,16 @@ class Down(object):
 			else:
 				log_str(DM_NETWORK_ERROR_INFO.format(self.class_name,options["url"],e))
 
-	def get_illust_info(self, pid, extra=None):
+	def get_illust_info(self, pid, extra="pixiv"):
 		'''
 		:parmas pid: 作品id,int类型
-		:parmas extra: 额外模式,用于对各种模式做一些特殊处理
-		比如关注画师和收藏作品2个模式之间有些许不同
-		默认None,extra为bookmark时,为bookmark模式
-
+		:parmas extra: 对不同模块设置对应的下载限制和拼接本地路径
 		:return data: 作品数据,字典
+
+		不存在的id:https://www.pixiv.net/ajax/illust/78914404
+		多图 https://www.pixiv.net/ajax/illust/78997178
+		动图 https://www.pixiv.net/ajax/illust/80373423
+		单图 https://www.pixiv.net/ajax/illust/77719030
 		'''
 		info_url = self.ajax_illust.format(pid)
 		resp = json.loads(self.baseRequest(options={"url":info_url}).text)
@@ -169,12 +165,14 @@ class Down(object):
 			"original":original
 		}
 		# extra对模式处理
+		# bookmark表
 		if extra == "bookmark":
 			LIMIT = BOOKMARK_LIMIT
 			user_path = file_manager.bk_path
-		else:
-			user_path = self.file_manager.select_user_path(uid)
+		# pixiv表
+		elif extra == "pixiv":
 			LIMIT = USERS_LIMIT
+			user_path = self.file_manager.select_user_path(uid)
 
 
 		"""
@@ -186,11 +184,11 @@ class Down(object):
 		if bookmarkCount > LIMIT:
 			path = self.file_manager.mkdir_illusts(user_path,pid)
 			data["path"] = path
+			# 下载器启动
 			self.filter(data)
 		else:
 			path = "None"
 			data["path"] = path
-
 		return data
 
 	def filter(self, data):
@@ -229,7 +227,6 @@ class Down(object):
 
 		if os.path.exists(illustPath) == True and os.path.getsize(illustPath) > 1000:
 			# 作品存在且大于1000字节,为了避免58字节错误页面和其他错误页面
-			# log_str("{}已存在".format(name))
 			pass
 		else:
 			c = self.baseRequest(options={"url":original}).content

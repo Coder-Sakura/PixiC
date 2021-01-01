@@ -2,8 +2,9 @@
 from selenium import webdriver
 from selenium.common.exceptions import InvalidArgumentException
 from requests.cookies import RequestsCookieJar
-import json
 import re
+import json
+import random
 import requests
 
 from config import *
@@ -12,6 +13,16 @@ from message import *
 
 # 存储用户cookie的文件名称
 COOKIE_NAME = "pixiv_cookie"
+
+headers = {
+	"Host": "www.pixiv.net",
+	"referer": "https://www.pixiv.net/",
+	"origin": "https://accounts.pixiv.net",
+	"accept-language": "zh-CN,zh;q=0.9",
+	"User-Agent": 'Mozilla/5.0 (Windows NT 10.0; WOW64) '
+		'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.87 Safari/537.36',
+}
+
 
 class Login(object):
 
@@ -22,26 +33,65 @@ class Login(object):
 		cookie用于存储selenium获取的cookie
 		"""
 		self.host_url = "https://www.pixiv.net/"
-		self.user_id = ""
 		self.flag = True if USER_ID == "" else False
-		self.cookie = RequestsCookieJar()
+		self.user_id = USER_ID if USER_ID != "" else ""
+		self.isExists_UserCookie = True if ORIGI_COOKIE_LIST != [] else False
+		# uid为空,而cookie又随机
+		self.cookie_list = []
+		# self.RCJar = RequestsCookieJar()
+		# self.cookie = RequestsCookieJar()
 		self.class_name = self.__class__.__name__
+
+	def add_cookie(self,pending_cookie):
+		"""
+		判断向self.cookie_list添加cookie
+		"""
+		if pending_cookie not in self.cookie_list and \
+		   type(pending_cookie) == type(RequestsCookieJar()):
+			self.cookie_list.append(pending_cookie)
+
+	def reload_cookie_list(self,pending_cookie):
+		"""
+		TBD:重载cookie
+		pending_cookie为None
+			复制一份cookie_list
+			调用check函数
+			-->成功
+				使用新cookie_list清空复制出来的
+		pending_cookie不为None则清空cookie_list,并append pending_cookie
+		return True/
+		"""
+		pass
 		
 	def check(self):
 		"""
-		获取cookie
+		用于在启动多进程前,获取并校验cookie和uid的获取
 		"""
 		log_str(GET_COOKIE_INFO.format(self.class_name))
-		# 条件表达式,将cookie对象赋值给self.cookie
-		self.get_cookie() if COOKIE_UPDATE_ENABLED == True else self.set_cookie()
-		if self.cookie == []:
-			log_str(LOGIN_ERROR_INFO.format(self.class_name))
-			exit()
+		# 检查是否能支持用户自定义cookie
+		if self.isExists_UserCookie:
+			try:
+				self.str2CookieJar()
+			except Exception as e:
+				log_str(e)
+				log_str(CONVERT_COOKIEJAR_ERROR_INFO.format(self.class_name))
+				exit()
+		# 检查是否能通过selenium/本地cookie文件获取
+		else:
+			self.get_cookie() if COOKIE_UPDATE_ENABLED == True else self.set_cookie()
+			if self.cookie_list == []:
+				log_str(LOGIN_ERROR_INFO.format(self.class_name))
+				exit()
+
+		# 检查是否能获取user_id
+		if self.flag:
+			self.user_id = self.get_user_id()
+
 		log_str(INIT_INFO.format(self.class_name))
 
 	def get_cookie(self):
 		'''
-		配置selenium以访问站点,持久化cookie
+		配置selenium以访问站点,持久化cookie 
 		'''
 		log_str(GET_COOKIE_NOW_INFO.format(self.class_name))
 		chrome_options = webdriver.ChromeOptions()
@@ -67,13 +117,13 @@ class Login(object):
 
 			with open(COOKIE_NAME, "w") as fp:
 			    json.dump(cookies, fp)
-			    for _ in cookies:
-			    	self.cookie.set(_['name'], _['value'])
+			    # for _ in cookies:
+			    # 	self.cookie.set(_['name'], _['value'])
+			self.set_cookie()
 			
-
 	def set_cookie(self):
 		'''
-		读取并返回cookie
+		读取并添加cookie
 		'''
 		try:
 			with open(COOKIE_NAME, "r", encoding="utf8") as fp:
@@ -83,8 +133,11 @@ class Login(object):
 					exit()
 				fp.seek(0)
 				cookies = json.load(fp)
+				RCJar = RequestsCookieJar()
 				for cookie in cookies:
-					self.cookie.set(cookie['name'], cookie['value'])
+					RCJar.set(cookie['name'], cookie['value'])
+					# self.cookie.set(cookie['name'], cookie['value'])
+				self.add_cookie(RCJar)
 		except FileNotFoundError as e:
 			log_str(FILE_NOT_FOUND_INFO_1.format(self.class_name))
 			log_str(FILE_NOT_FOUND_INFO_2.format(self.class_name))
@@ -92,14 +145,41 @@ class Login(object):
 			exit()
 		
 		# 获取user_id
-		if self.flag == True:
-			self.user_id = self.get_user_id()
-		else:
-			self.user_id = USER_ID
-		return self.cookie
+		# if self.flag:
+		# 	self.user_id = self.get_user_id()
+		# else:
+		# 	self.user_id = USER_ID
+		# return self.cookie
 
 	def get_user_id(self):
-		user_id = re.findall(r'''.*?,user_id:"(.*?)",.*?''',requests.get(self.host_url,cookies=self.cookie).text.replace(" ",""))[0]
+		resp = requests.get(self.host_url,headers=headers,cookies=random.choice(self.cookie_list)).text
+		if "Please turn JavaScript on and reload the page." in resp:
+			log_str(GOOGLE_CAPTCHA_ERROR_INFO.format(self.class_name))
+			exit()
+		user_id = re.findall(r'''.*?,user_id:"(.*?)",.*?''',resp.replace(" ",""))[0]
 		return user_id
+
+	def subprocess_check(self):
+		"""
+		子进程调用,不存在2个都为空,主进程一开始会check检查是否通过
+		"""
+		if self.isExists_UserCookie:
+			self.str2CookieJar()
+		else:
+			self.set_cookie()
+
+		if self.flag:
+			self.user_id = self.get_user_id()
+
+		return self.cookie_list
+
+	def str2CookieJar(self):
+		for oc in ORIGI_COOKIE_LIST:
+			cookie_dict = {}
+			for i in oc.split(";"):
+				n,v = i.strip().split("=",1)
+				cookie_dict[n] = v
+			cookie = requests.utils.cookiejar_from_dict(cookie_dict)
+			self.add_cookie(cookie)
 
 client = Login()

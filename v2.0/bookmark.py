@@ -22,7 +22,13 @@ class Bookmark(object):
 		
 		self.bookmark_url = "https://www.pixiv.net/ajax/user/{}/illusts/bookmarks".format(self.user_id)
 		self.db = self.Downloader.db
+		self.bookmark_page_offset = 48
 		self.class_name = self.__class__.__name__
+		# 2020/10/20 收藏更新机制
+		# 默认第一次全更新
+		self.day_count = 5
+		self.day_all_update_num = 5
+		self.day_limit = 800
 
 	def get_page_bookmark(self, offset):
 		"""
@@ -33,23 +39,22 @@ class Bookmark(object):
 		params = {
 			"tag":"",
 			"offset":offset,
-			"limit":100,
+			"limit":self.bookmark_page_offset,
 			"rest":"show",			
 		}
 		try:
 			r = json.loads(self.base_request({"url":self.bookmark_url},params=params).text)
 		except Exception as e:
 			# 网络请求出错
-			log_str(BOOKMARK_PAGE_ERROR_INFO.format(self.class_name))
+			log_str(BOOKMARK_PAGE_ERROR_INFO.format(self.class_name,offset,offset+self.bookmark_page_offset))
 			return None
 		else:
 			# 未登录
 			if r["message"] == UNLOGIN_TEXT:
-				log_str(UNLOGIN_INFO.format(self.class_name))
 				return UL_TEXT
 
 			res = r["body"]["works"]
-			illusts_pid = [int(i["illustId"]) for i in res]
+			illusts_pid = [int(i["id"]) for i in res]
 			return illusts_pid
 
 	def check_update(self):
@@ -74,8 +79,13 @@ class Bookmark(object):
 
 		if res == None:
 			log_str(UPDATE_CHECK_ERROR_INFO.format(self.class_name))
-			return false
+			return False
 			
+		# res类型不等于列表
+		if type(res) != type([]):
+			log_str(UPDATE_CHECK_ERROR_INFO.format(self.class_name))
+			return False
+
 		# 验证前十张
 		for pid in res[:10]:
 			if self.db.check_illust(pid,table="bookmark")[0] == False:
@@ -110,7 +120,7 @@ class Bookmark(object):
 			else:
 				log_str(INSERT_SUCCESS_INFO.format(self.class_name,pid))
 		else:
-			self.db.updata_illust(info,table="bookmark")
+			self.db.update_illust(info,table="bookmark")
 
 	def run(self):
 		log_str(BEGIN_INFO.format(self.class_name))
@@ -122,36 +132,48 @@ class Bookmark(object):
 		try:
 			offset = 0
 			pool = ThreadPool(8)	
-
 			while True:
+				# 累计更新小于5次,更新前800张,最多848张
+				if self.day_count < self.day_all_update_num:
+					if offset > self.day_limit:
+						log_str(UPDATE_DAY_LIMIT_INFO.format(self.class_name,self.day_limit,self.day_count))
+						break
+
 				pid_list = self.get_page_bookmark(offset)
 				# 获取异常返回None
 				if pid_list == None:
-					log_str(BOOKMARK_PAGE_ERROR_INFO.format(self.class_name,offset,offset+100))
+					log_str(BOOKMARK_PAGE_ERROR_INFO.format(self.class_name,offset,offset+self.bookmark_page_offset))
 					continue
 				
 				# 未登录
 				if pid_list == UL_TEXT:
-					log_str(UNLOGIN_INFO.format(self.class_name,offset,offset+100))
+					log_str(UNLOGIN_INFO.format(self.class_name))
 					break
 
 				# 无收藏返回[]
 				if pid_list == []:
 					break
 
-				log_str(BOOKMARK_NOW_INFO.format(self.class_name,offset,offset+100,len(pid_list)))
-				for pid in pid_list:
-					pool.put(self.thread_by_illust,(pid,),callback)
+				log_str(BOOKMARK_NOW_INFO.format(self.class_name,offset,offset+self.bookmark_page_offset,len(pid_list)))
+				# for pid in pid_list:
+				# 	pool.put(self.thread_by_illust,(pid,),callback)
 
-				offset += 100
+				offset += self.bookmark_page_offset
 
 				time.sleep(1)
-
 		except Exception as e:
 			log_str("Exception {}".format(e))
 		finally:
+			# 累计等于5次,不触发更新限制机制,全更新完后恢复day_count
+			if self.day_count == self.day_all_update_num:
+				log_str(UPDATE_DAY_ALL_INFO.format(self.class_name))
+				self.day_count = 0
+			else:
+				self.day_count += 1
+
 			pool.close()
 		log_str(SLEEP_INFO.format(self.class_name))
+		log_str("="*48)
 
 
 # if __name__ == '__main__':

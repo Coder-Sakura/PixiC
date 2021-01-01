@@ -6,22 +6,24 @@ author: coder_sakura
 """
 
 # ================================================
-VERSION = "2.1.1"
-VERSION_INFO = "==========PixiC v{}==========".format(VERSION)
+VERSION = "v2.1.2"
+VERSION_INFO = "==========PixiC-{}==========".format(VERSION)
 # db
 DB_INFO = "使用API需要开启数据库"
-DB_CONNECT_ERROR_INFO = "请确保Mysql在运行/配置好\n{}"
-DB_INST = "数据库连接池实例化"
+DB_CONNECT_ERROR_INFO = "请确保数据库打开并运行或重新检查数据库配置\n{}"
+DB_INST = "{}:数据库连接池实例化"
 DB_UPDATE_ILLUST_ERROR_INFO = "{}:更新作品:{},出错:{}"
 
 # Login
-LOGIN_ERROR_INFO = "{}:打开代理软件/使用Chrome登录Pixiv"
+LOGIN_ERROR_INFO = "{}:请打开代理软件或先使用Chrome登录Pixiv"
 INIT_INFO = "{}:初始化完成！"
 COOKIE_EMPTY_INFO = "{}:本地Cookie为空,请更新"
 FILE_NOT_FOUND_INFO_1 = "{}:pixiv_cookie文件不存在"
-FILE_NOT_FOUND_INFO_2 = "{}:首次运行请将COOKIE_UPDATE_ENABLED设置为True"
+FILE_NOT_FOUND_INFO_2 = "{}:首次运行请将config文件中的COOKIE_UPDATE_ENABLED设置为True"
+CONVERT_COOKIEJAR_ERROR_INFO = "{}:自定义cookie转换失败！请检查或重新粘贴cookie"
 GET_COOKIE_INFO = "{}:正在获取账号信息"
 GET_COOKIE_NOW_INFO = "{}:获取信息时请关闭Chrome"
+GOOGLE_CAPTCHA_ERROR_INFO = "{}:请检查cookie是否有效或将config文件的COOKIE_UPDATE_ENABLED设置为True"
 
 # CW
 BEGIN_INFO = "{}:开始轮询"
@@ -33,6 +35,7 @@ FOLLOW_NO_ILLUSTS_INFO = "{}:{}(pid:{})无作品"
 FOLLOW_DATA_ERROR_INFO = "{}:获取画师数据出错 {}"
 UPDATE_USER_INFO = "{}:{}更新画师:{}(pid:{}) | 作品数:{} 最新作品:{}"
 NOW_USER_INFO = "{}:{}当前画师:{}(pid:{}) |作品数: {}"
+NO_FOLLOW_USERS = "{}:关注列表为空"
 
 # BM
 BOOKMARK_PAGE_ERROR_INFO = "{}:获取收藏出错: 第{}-{}张失败"
@@ -40,6 +43,8 @@ BOOKMARK_NOW_INFO = "{}:当前收藏:第{}-{}张获取成功,共{}张可用"
 UPDATE_INFO = "{}:进行更新"
 UPDATE_CANLE_INFO = "{}:暂不更新"
 UPDATE_CHECK_ERROR_INFO = "{}:检查更新出错!"
+UPDATE_DAY_LIMIT_INFO = "{}:达到每日更新量:{}张,当前位于周期更新第{}天"
+UPDATE_DAY_ALL_INFO = "{}:已对所有收藏作品进行全更新,day_count将清零"
 
 # 线程函数通用
 ILLUST_NETWORK_ERROR_INFO = "{}:{}请求错误,{}"
