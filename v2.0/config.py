@@ -2,19 +2,16 @@
 # ================================================
 # 关注画师路径为空时,在脚本当前路径创建pixiv_crawler文件夹
 # 示例,D:\se18
-# ROOT_PATH = r''
-ROOT_PATH = r'D:\se18'
+ROOT_PATH = r''
 
 # 收藏作品路径为空时,在脚本当前路径创建bookmark文件夹
 # 示例,D:\bookmark
-# BOOKMARK_PATH = r''
-BOOKMARK_PATH = r'D:\bookmark'
+BOOKMARK_PATH = r''
 
 # Chrome浏览器用户数据目录
 # 根据wiki进行更改,此为路径参考,一般只需要将<user>更改为你的用户名
 # PRO_DIR = r'C:\Users\Administrator\AppData\Local\Google\Chrome\User Data'
-# PRO_DIR = r''
-PRO_DIR = r'C:\Users\Hatsune Miku\AppData\Local\Google\Chrome\User Data'
+PRO_DIR = r''
 # ================================================
 
 
@@ -23,7 +20,6 @@ PRO_DIR = r'C:\Users\Hatsune Miku\AppData\Local\Google\Chrome\User Data'
 # 一般是下载自己的pixiv关注和收藏,如需下载他人的
 # 请填写他人的uid并选择另外的目录作为下载目录,避免存放到之前的目录中
 # USER_ID = ""
-USER_ID = "27858363"
 
 
 """
