@@ -1,7 +1,7 @@
 # coding=utf8
 # ================================================
 # 关注画师路径为空时,在脚本当前路径创建pixiv_crawler文件夹
-# 示例,D:\se18
+# 示例,D:\pixiv_crawler
 ROOT_PATH = r''
 
 # 收藏作品路径为空时,在脚本当前路径创建bookmark文件夹
@@ -19,7 +19,7 @@ PRO_DIR = r''
 # pixiv uid用于获取用户的关注、收藏
 # 一般是下载自己的pixiv关注和收藏,如需下载他人的
 # 请填写他人的uid并选择另外的目录作为下载目录,避免存放到之前的目录中
-# USER_ID = ""
+USER_ID = ""
 
 
 """
@@ -53,8 +53,8 @@ PIXIV_CRAWLER_ENABLED = True
 PIXIV_BOOKMARK_ENABLED = True
 
 # API控制开关
-PIXIV_API_ENABLED = True
-# PIXIV_API_ENABLED = False
+# PIXIV_API_ENABLED = True
+PIXIV_API_ENABLED = False
 # ================================================
 
 

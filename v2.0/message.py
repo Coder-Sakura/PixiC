@@ -6,7 +6,7 @@ author: coder_sakura
 """
 
 # ================================================
-VERSION = "v2.1.2"
+VERSION = "v2.1.3"
 VERSION_INFO = "==========PixiC-{}==========".format(VERSION)
 # db
 DB_INFO = "使用API需要开启数据库"
@@ -33,7 +33,7 @@ FOLLOW_ERROR_INFO = "{}:获取关注列表出错"
 FOLLOW_PAGE_ERROR_INFO = "{}:获取画师出错,第{}-{}位"
 FOLLOW_NO_ILLUSTS_INFO = "{}:{}(pid:{})无作品"
 FOLLOW_DATA_ERROR_INFO = "{}:获取画师数据出错 {}"
-UPDATE_USER_INFO = "{}:{}更新画师:{}(pid:{}) | 作品数:{} 最新作品:{}"
+UPDATE_USER_INFO = "{}:{}更新画师:{}(uid:{}) | 作品数:{} 最新作品:{}"
 NOW_USER_INFO = "{}:{}当前画师:{}(pid:{}) |作品数: {}"
 NO_FOLLOW_USERS = "{}:关注列表为空"
 

@@ -11,7 +11,7 @@ import time
 from downer import Down
 from logstr import log_str
 from message import *
-from thread_pool import *
+from thread_pool import ThreadPool,callback
 
 
 class Bookmark(object):
@@ -155,8 +155,8 @@ class Bookmark(object):
 					break
 
 				log_str(BOOKMARK_NOW_INFO.format(self.class_name,offset,offset+self.bookmark_page_offset,len(pid_list)))
-				# for pid in pid_list:
-				# 	pool.put(self.thread_by_illust,(pid,),callback)
+				for pid in pid_list:
+					pool.put(self.thread_by_illust,(pid,),callback)
 
 				offset += self.bookmark_page_offset
 

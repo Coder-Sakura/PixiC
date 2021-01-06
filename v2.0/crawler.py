@@ -11,7 +11,7 @@ import re
 from downer import Down
 from logstr import log_str
 from message import *
-from thread_pool import *
+from thread_pool import ThreadPool,callback
 
 
 class Crawler(object):
@@ -20,6 +20,8 @@ class Crawler(object):
 		self.user_id = self.Downloader.client.user_id
 		self.base_request = self.Downloader.baseRequest
 
+		# 公开/非公开
+		self.rest_list = ["show","hide"]
 		# 画师列表
 		self.follw_url = "https://www.pixiv.net/ajax/user/{}/following".format(self.user_id)
 		# 作品链接,存数据库
@@ -30,7 +32,7 @@ class Crawler(object):
 		self.db = self.Downloader.db
 		self.class_name = self.__class__.__name__
 
-	def get_page_users(self,offset):
+	def get_page_users(self,offset,rest="show"):
 		"""
 		:params offset 偏移量,按照偏移量获得limit范围内的画师
 		:return 接口数据中的画师数组
@@ -38,7 +40,7 @@ class Crawler(object):
 		params = {
 			"offset":offset,
 			"limit":100,
-			"rest":"show",			
+			"rest":rest,			
 		}
 		try:
 			r = json.loads(self.base_request({"url":self.follw_url},params=params).text)
@@ -66,46 +68,47 @@ class Crawler(object):
 		err_count = 0
 		err_limit = 10
 
-		while True:
-			u_list = self.get_page_users(offset)
+		for rest in self.rest_list:
+			while True:
+				u_list = self.get_page_users(offset,rest=rest)
 
-			# 网络请求出错
-			if u_list == None:
-				# 累计10次网络错误
-				if err_count < err_limit:
-					offset += 100
-					err_count += 1
-					continue
-				else:
+				# 网络请求出错
+				if u_list == None:
+					# 累计10次网络错误
+					if err_count < err_limit:
+						offset += 100
+						err_count += 1
+						continue
+					else:
+						break
+
+				# 未登录
+				if u_list == UL_TEXT:
+					users_info_list = UL_TEXT
 					break
 
-			# 未登录
-			if u_list == UL_TEXT:
-				users_info_list = UL_TEXT
-				break
+				# 获取所有关注完毕
+				if u_list == []:
+					break
 
-			# 获取所有关注完毕
-			if u_list == []:
-				break
+				for u in u_list:
+					user_info = {}
+					user_info["uid"] = int(u["userId"])
+					# userName = re.sub('[\\\/:*?"<>|]','_',u["userName"])
+					userName = re.sub(r'[\s\/:*?"<>|\\]','_',u["userName"])
+					user_info["userName"] = userName
 
-			for u in u_list:
-				user_info = {}
-				user_info["uid"] = int(u["userId"])
-				# userName = re.sub('[\\\/:*?"<>|]','_',u["userName"])
-				userName = re.sub(r'[\s\/:*?"<>|\\]','_',u["userName"])
-				user_info["userName"] = userName
+					if u["illusts"] == []:
+						user_info["latest_id"] = -1
+						log_str(FOLLOW_NO_ILLUSTS_INFO.format(self.class_name,u["userName"],u["userId"]))
+						# 无作品不做动作
+						continue	
+					else:
+						user_info["latest_id"] = int(u["illusts"][0]["id"])
 
-				if u["illusts"] == []:
-					user_info["latest_id"] = -1
-					log_str(FOLLOW_NO_ILLUSTS_INFO.format(self.class_name,u["userName"],u["userId"]))
-					# 无作品不做动作
-					continue	
-				else:
-					user_info["latest_id"] = int(u["illusts"][0]["id"])
+					users_info_list.append(user_info)
 
-				users_info_list.append(user_info)
-
-			offset += 100
+				offset += 100
 
 		return users_info_list
 
@@ -198,8 +201,8 @@ class Crawler(object):
 					if hasattr(self.db,"pool"):
 						self.db.update_latest_id(u)
 
-					# for pid in all_illust:
-					# 	pool.put(self.thread_by_illust,(pid,),callback)
+					for pid in all_illust:
+						pool.put(self.thread_by_illust,(pid,),callback)
 
 					time.sleep(5)
 				else:
