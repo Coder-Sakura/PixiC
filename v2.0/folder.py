@@ -17,11 +17,13 @@ class Folder(object):
 		isExists = os.path.exists(self.bk_path)
 		if not isExists:os.makedirs(self.bk_path)
 
-	def select_user_path(self, uid):
+	def select_user_path(self, uid, userName):
 		for folder in os.listdir(self.path):
 			if str(uid) == folder.split('--')[0]:
 				user_path = os.path.join(self.path,folder)
 				return user_path
+		else:
+			return self.mkdir_painter({"uid":uid,"userName":userName})
 
 	def mkdir_painter(self, info):
 		'''

@@ -48,6 +48,9 @@ class Down(object):
 		self.ajax_illust = "https://www.pixiv.net/ajax/illust/{}"
 		# 动图的zip包下载地址
 		self.zip_url = "https://www.pixiv.net/ajax/illust/{}/ugoira_meta"
+		# 多图-每张图的url组
+		self.multi_url = "https://www.pixiv.net/ajax/illust/{}/pages"
+
 		# log_str("user_id",self.client.user_id)
 
 	def baseRequest(self, options, data=None, params=None, retry_num=5):
@@ -86,6 +89,7 @@ class Down(object):
 				return self.baseRequest(options,data,params,retry_num-1)
 			else:
 				log_str(DM_NETWORK_ERROR_INFO.format(self.class_name,options["url"],e))
+				return None
 
 	def get_illust_info(self, pid, extra="pixiv"):
 		'''
@@ -98,8 +102,13 @@ class Down(object):
 		动图 https://www.pixiv.net/ajax/illust/80373423
 		单图 https://www.pixiv.net/ajax/illust/77719030
 		'''
+		# time1 = time.time()
 		info_url = self.ajax_illust.format(pid)
-		resp = json.loads(self.baseRequest(options={"url":info_url}).text)
+		r = self.baseRequest(options={"url":info_url})
+		if r == None:
+			return None
+
+		resp = json.loads(r.text)
 		# 未登录
 		if resp["message"] == UNLOGIN_TEXT:
 			log_str(UNLOGIN_INFO.format(self.class_name))
@@ -172,7 +181,7 @@ class Down(object):
 		# pixiv表
 		elif extra == "pixiv":
 			LIMIT = USERS_LIMIT
-			user_path = self.file_manager.select_user_path(uid)
+			user_path = self.file_manager.select_user_path(uid,userName)
 
 
 		"""
@@ -181,14 +190,22 @@ class Down(object):
 		不满足条件 -->  ---      path=None      入库
 		"""
 		# 获取作品下载路径
+		# time2 = time.time()
 		if bookmarkCount > LIMIT:
 			path = self.file_manager.mkdir_illusts(user_path,pid)
 			data["path"] = path
 			# 下载器启动
+			# log_str("id:{} 作品正在下载".format(pid))
 			self.filter(data)
 		else:
 			path = "None"
 			data["path"] = path
+			# log_str("id:{} 作品不满足条件,不下载".format(pid))
+		# time3 = time.time()
+		# print("{} 请求:{} 下载:{}".format(pid,round(time2-time1,2),round(time3-time2,2)))
+		# with open("res.txt","a+",encoding="utf8") as f:
+		# 	f.write("{} 请求:{} 下载:{}".format(pid,round(time2-time1,2),round(time3-time2,2)))
+		# 	f.write("\n")
 		return data
 
 	def filter(self, data):
@@ -227,10 +244,13 @@ class Down(object):
 
 		if os.path.exists(illustPath) == True and os.path.getsize(illustPath) > 1000:
 			# 作品存在且大于1000字节,为了避免58字节错误页面和其他错误页面
+			# log_str("{}已存在".format(name))
 			pass
 		else:
-			c = self.baseRequest(options={"url":original}).content
-			size = self.downSomething(illustPath,c)
+			c = self.baseRequest(options={"url":original})
+			if c == None:
+				return None
+			size = self.downSomething(illustPath,c.content)
 			log_str(DM_DOWNLOAD_SUCCESS_INFO.format(self.class_name,name,self.size2Mb(size)))
 			time.sleep(1)
 
@@ -240,32 +260,30 @@ class Down(object):
 		:param data: 作品数据
 		:return: 
 		"""
-		pageCount = data["pageCount"]
-		original = data["original"]
 		path_ = data["path"]
+		multi_resp = self.baseRequest(options={"url":self.multi_url.format(data["pid"])})
+		if multi_resp == None:
+			return None
 
-		# original = "https://i.pixiv.cat/img-original/img/2020/01/20/04/13/16/78997178_p0.png"
-		# 正序查找,获取"."前面数字的索引 | ['i', 'v', '0'] 取最后一个
-		# n记录original中变化页数的索引
-		n = [i-1 for i in range(len(original)-1) if original[i] == "."][-1]
+		multi_json = json.loads(multi_resp.text)
+		if multi_json["error"] == True or multi_json["body"] == []:
+			log_str(ILLUST_EMPTY_INFO.format(self.class_name,data["pid"]))
+			return None
 		
-		# 倒序切分1次,以p0的0进行切分
-		# end = original.rsplit(original[n],1)
-		
-		for i in range(0,int(pageCount)):
-			# 用join方法将页数合成进新的url
-			# new_original = "{}".join(end).format(i)
-			# 倒序替换时,插入的页数也需要反转str(i)[::-1]
-			new_original = original[::-1].replace(original[n],str(i)[::-1],1)[::-1]
-			name = "{}-{}.{}".format(data["pid"],i,new_original.split(".")[-1])
+		for m in multi_json["body"]:
+			# https://i.pixiv.cat/img-original/img/2020/01/20/04/13/16/78997178_p0.png
+			new_original = m["urls"].get("original","")
+			# 78997178-0.png
+			name = new_original.split("/")[-1].replace("_p","-")
 			illustPath = os.path.join(path_,name)
-
 			if os.path.exists(illustPath) == True and os.path.getsize(illustPath) > 1000:
 				# log_str("{}已存在".format(name))
 				pass
 			else:
-				c = self.baseRequest(options={"url":new_original}).content
-				size = self.downSomething(illustPath,c)
+				c = self.baseRequest(options={"url":new_original})
+				if c == None:
+					return None
+				size = self.downSomething(illustPath,c.content)
 				log_str(DM_DOWNLOAD_SUCCESS_INFO.format(self.class_name,name,self.size2Mb(size)))
 				time.sleep(1)
 
@@ -289,17 +307,28 @@ class Down(object):
 			# log_str("{}已存在".format(name))
 			pass
 		else:
-			z = json.loads(self.baseRequest(options={"url":zipInfoUrl}).text)
+			z_info = self.baseRequest(options={"url":zipInfoUrl})
+			if z_info == None:
+				return None
+
+			z = json.loads(z_info.text)
 			zip_url = z["body"]["originalSrc"]
 			# item["delay"]为对应图片停留间隔,单位毫秒
 			delay = [item["delay"]/1000 for item in z["body"]["frames"]]
+
 			# 下载zip
+			zip_resp = self.baseRequest(options={"url":zip_url})
+			if zip_resp == None:
+				return None
+
 			with open(zip_path,"ab") as f1:
-				f1.write(self.baseRequest(options={"url":zip_url}).content)
+				f1.write(zip_resp.content)
+
 			# 解压zip
 			with zipfile.ZipFile(zip_path,"r") as f2:
 				for file in f2.namelist():
 					f2.extract(file,path_)
+
 			# 删除zip
 			os.remove(zip_path)
 			# 扫描解压出来的图片

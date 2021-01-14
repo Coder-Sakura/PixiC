@@ -1,4 +1,4 @@
-**PixiC V2.1.2**
+**PixiC V2.1.4**
 
 + 部署文档： [Wiki](https://github.com/Coder-Sakura/PixiC/wiki),  [Blog](http://00102400.xyz/blog/2020/06/24/pixic-bu-shu/)
 + API文档：[API](https://github.com/Coder-Sakura/PixiC/wiki/API文档),  [Blog](http://00102400.xyz/blog/2020/07/08/pixicapi/)

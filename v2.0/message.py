@@ -6,7 +6,7 @@ author: coder_sakura
 """
 
 # ================================================
-VERSION = "v2.1.3"
+VERSION = "v2.1.4"
 VERSION_INFO = "==========PixiC-{}==========".format(VERSION)
 # db
 DB_INFO = "使用API需要开启数据库"
