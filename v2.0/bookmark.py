@@ -10,7 +10,7 @@ import time
 
 from downer import Down
 from logstr import log_str
-from message import *
+from message import TEMP_MSG
 from thread_pool import ThreadPool,callback
 
 
@@ -46,12 +46,12 @@ class Bookmark(object):
 			r = json.loads(self.base_request({"url":self.bookmark_url},params=params).text)
 		except Exception as e:
 			# 网络请求出错
-			log_str(BOOKMARK_PAGE_ERROR_INFO.format(self.class_name,offset,offset+self.bookmark_page_offset))
+			log_str(TEMP_MSG["BOOKMARK_PAGE_ERROR_INFO"].format(self.class_name,offset,offset+self.bookmark_page_offset))
 			return None
 		else:
 			# 未登录
-			if r["message"] == UNLOGIN_TEXT:
-				return UL_TEXT
+			if r["message"] == TEMP_MSG["UNLOGIN_TEXT"]:
+				return TEMP_MSG["UL_TEXT"]
 
 			res = r["body"]["works"]
 			illusts_pid = [int(i["id"]) for i in res]
@@ -68,93 +68,113 @@ class Bookmark(object):
 
 		# 数据库开关若关闭,直接更新
 		if hasattr(self.db,"pool") == False:
-			log_str(UPDATE_INFO.format(self.class_name))
+			log_str(TEMP_MSG["UPDATE_INFO"].format(self.class_name))
 			return True
 
 		res = self.get_page_bookmark(0)
 
-		if res == UL_TEXT:
-			log_str(UPDATE_CHECK_ERROR_INFO.format(self.class_name))
+		if res == TEMP_MSG["UL_TEXT"]:
+			log_str(TEMP_MSG["UPDATE_CHECK_ERROR_INFO"].format(self.class_name))
 			return False
 
 		if res == None:
-			log_str(UPDATE_CHECK_ERROR_INFO.format(self.class_name))
+			log_str(TEMP_MSG["UPDATE_CHECK_ERROR_INFO"].format(self.class_name))
 			return False
 			
 		# res类型不等于列表
 		if type(res) != type([]):
-			log_str(UPDATE_CHECK_ERROR_INFO.format(self.class_name))
+			log_str(TEMP_MSG["UPDATE_CHECK_ERROR_INFO"].format(self.class_name))
 			return False
 
 		# 验证前十张
 		for pid in res[:10]:
 			if self.db.check_illust(pid,table="bookmark")[0] == False:
-				log_str(UPDATE_INFO.format(self.class_name))
+				log_str(TEMP_MSG["UPDATE_INFO"].format(self.class_name))
 				return True
 		else:
-			log_str(UPDATE_CANLE_INFO.format(self.class_name))
+			log_str(TEMP_MSG["UPDATE_CANLE_INFO"].format(self.class_name))
 			return False
 
 	def thread_by_illust(self, *args):
+		"""
+		线程任务函数
+		"""
 		pid = args[0]
 		try:
 			info = self.Downloader.get_illust_info(pid,extra="bookmark")
 		except Exception as e:
-			log_str(ILLUST_NETWORK_ERROR_INFO.format(self.class_name,pid,e))
+			log_str(TEMP_MSG["ILLUST_NETWORK_ERROR_INFO"].format(self.class_name,pid,e))
 			return 
 
 		if info == None:
-			log_str(ILLUST_EMPTY_INFO.format(self.class_name,pid))
+			log_str(TEMP_MSG["ILLUST_EMPTY_INFO"].format(self.class_name,pid))
 			return
 
 		# 数据库开关关闭
 		if hasattr(self.db,"pool") == False:
 			return 
 
-		isExists,path = self.db.check_illust(pid,table="bookmark")
-		# 数据库无该记录
-		if isExists == False:
-			res = self.db.insert_illust(info,table="bookmark")
-			if res == False:
-				log_str(INSERT_FAIL_INFO.format(self.class_name,pid))
+		try:
+			isExists,path = self.db.check_illust(pid,table="bookmark")
+			# 数据库无该记录
+			if isExists == False:
+				# 第一次更新,pid不存在/被删除/无法找到
+				if info == TEMP_MSG["PID_DELETED_TEXT"] or info == TEMP_MSG["PID_ERROR_TEXT"]:
+					return 
+					
+				res = self.db.insert_illust(info,table="bookmark")
+				if res:
+					log_str(TEMP_MSG["INSERT_SUCCESS_INFO"].format(self.class_name,pid))
+				else:
+					log_str(TEMP_MSG["INSERT_FAIL_INFO"].format(self.class_name,pid))
+			# 数据库有该记录
 			else:
-				log_str(INSERT_SUCCESS_INFO.format(self.class_name,pid))
-		else:
-			self.db.update_illust(info,table="bookmark")
+				# pid不存在/被删除
+				if info == TEMP_MSG["PID_DELETED_TEXT"]:
+					result = self.db.delete_user_illust(key="pid",value=pid)
+					# 删除成功
+					if result:
+						log_str(TEMP_MSG["DELELE_ILLUST_SUCCESS_INFO"].format(self.class_name,pid))
+					else:
+						log_str(TEMP_MSG["DELELE_ILLUST_FAIL_INFO"].format(self.class_name,pid))
+				else:
+					self.db.update_illust(info,table="bookmark")
+		except Exception as e:
+			log_str("thread_by_illust|Exception {}".format(e))
 
 	def run(self):
-		log_str(BEGIN_INFO.format(self.class_name))
+		log_str(TEMP_MSG["BEGIN_INFO"].format(self.class_name))
 		# 更新机制判定
 		if self.check_update() == False:
-			log_str(SLEEP_INFO.format(self.class_name))
+			log_str(TEMP_MSG["SLEEP_INFO"].format(self.class_name))
 			return
 
 		try:
 			offset = 0
-			pool = ThreadPool(8)	
+			pool = ThreadPool(8)
 			while True:
 				# 累计更新小于5次,更新前800张,最多848张
 				if self.day_count < self.day_all_update_num:
 					if offset > self.day_limit:
-						log_str(UPDATE_DAY_LIMIT_INFO.format(self.class_name,self.day_limit,self.day_count))
+						log_str(TEMP_MSG["UPDATE_DAY_LIMIT_INFO"].format(self.class_name,self.day_limit,self.day_count))
 						break
 
 				pid_list = self.get_page_bookmark(offset)
 				# 获取异常返回None
 				if pid_list == None:
-					log_str(BOOKMARK_PAGE_ERROR_INFO.format(self.class_name,offset,offset+self.bookmark_page_offset))
+					log_str(TEMP_MSG["BOOKMARK_PAGE_ERROR_INFO"].format(self.class_name,offset,offset+self.bookmark_page_offset))
 					continue
 				
 				# 未登录
-				if pid_list == UL_TEXT:
-					log_str(UNLOGIN_INFO.format(self.class_name))
+				if pid_list == TEMP_MSG["UL_TEXT"]:
+					log_str(TEMP_MSG["UNLOGIN_INFO"].format(self.class_name))
 					break
 
 				# 无收藏返回[]
 				if pid_list == []:
 					break
 
-				log_str(BOOKMARK_NOW_INFO.format(self.class_name,offset,offset+self.bookmark_page_offset,len(pid_list)))
+				log_str(TEMP_MSG["BOOKMARK_NOW_INFO"].format(self.class_name,offset,offset+self.bookmark_page_offset,len(pid_list)))
 				for pid in pid_list:
 					pool.put(self.thread_by_illust,(pid,),callback)
 
@@ -166,17 +186,18 @@ class Bookmark(object):
 		finally:
 			# 累计等于5次,不触发更新限制机制,全更新完后恢复day_count
 			if self.day_count == self.day_all_update_num:
-				log_str(UPDATE_DAY_ALL_INFO.format(self.class_name))
+				log_str(TEMP_MSG["UPDATE_DAY_ALL_INFO"].format(self.class_name))
 				self.day_count = 0
 			else:
 				self.day_count += 1
 
 			pool.close()
-		log_str(SLEEP_INFO.format(self.class_name))
+		log_str(TEMP_MSG["SLEEP_INFO"].format(self.class_name))
 		log_str("="*48)
 
 
 # if __name__ == '__main__':
+# 	from config import BOOKMARK_CYCLE
 # 	b = Bookmark()
 # 	while True:
 # 		b.run()

@@ -10,7 +10,7 @@ import re
 
 from downer import Down
 from logstr import log_str
-from message import *
+from message import TEMP_MSG
 from thread_pool import ThreadPool,callback
 
 
@@ -20,7 +20,7 @@ class Crawler(object):
 		self.user_id = self.Downloader.client.user_id
 		self.base_request = self.Downloader.baseRequest
 
-		# 公开/非公开
+		# 公开/非公开 见get_page_users
 		self.rest_list = ["show","hide"]
 		# 画师列表
 		self.follw_url = "https://www.pixiv.net/ajax/user/{}/following".format(self.user_id)
@@ -46,14 +46,14 @@ class Crawler(object):
 			r = json.loads(self.base_request({"url":self.follw_url},params=params).text)
 		except Exception as e:
 			# 网络请求出错
-			log_str(FOLLOW_PAGE_ERROR_INFO.format(self.class_name,offset,offset+100))
+			log_str(TEMP_MSG["FOLLOW_PAGE_ERROR_INFO"].format(self.class_name,offset,offset+100))
 			log_str(e)
 			return None
 		else:
 			# 未登录
-			if r["message"] == UNLOGIN_TEXT:
-				log_str(UNLOGIN_INFO.format(self.class_name))
-				return UL_TEXT
+			if r["message"] == TEMP_MSG["UNLOGIN_TEXT"]:
+				log_str(TEMP_MSG["UNLOGIN_INFO"].format(self.class_name))
+				return TEMP_MSG["UL_TEXT"]
 				
 			res = r['body']['users']
 			return res
@@ -83,8 +83,8 @@ class Crawler(object):
 						break
 
 				# 未登录
-				if u_list == UL_TEXT:
-					users_info_list = UL_TEXT
+				if u_list == TEMP_MSG["UL_TEXT"]:
+					users_info_list = TEMP_MSG["UL_TEXT"]
 					break
 
 				# 获取所有关注完毕
@@ -100,9 +100,9 @@ class Crawler(object):
 
 					if u["illusts"] == []:
 						user_info["latest_id"] = -1
-						log_str(FOLLOW_NO_ILLUSTS_INFO.format(self.class_name,u["userName"],u["userId"]))
+						log_str(TEMP_MSG["FOLLOW_NO_ILLUSTS_INFO"].format(self.class_name,u["userName"],u["userId"]))
 						# 无作品不做动作
-						continue	
+						# continue
 					else:
 						user_info["latest_id"] = int(u["illusts"][0]["id"])
 
@@ -126,7 +126,7 @@ class Crawler(object):
 			# 列表推导式合并取keys,转为list
 			user_illust_list = list([dict(i) if len(m) == 0 else dict(i,**m)][0].keys())
 		except Exception as e:
-			log_str(FOLLOW_DATA_ERROR_INFO.format(self.class_name,e))
+			log_str(TEMP_MSG["FOLLOW_DATA_ERROR_INFO"].format(self.class_name,e))
 			return []
 		else:
 			return user_illust_list
@@ -139,11 +139,11 @@ class Crawler(object):
 		try:
 			info = self.Downloader.get_illust_info(pid)
 		except Exception as e:
-			log_str(ILLUST_NETWORK_ERROR_INFO.format(self.class_name,pid,e))
+			log_str(TEMP_MSG["ILLUST_NETWORK_ERROR_INFO"].format(self.class_name,pid,e))
 			return 
 
 		if info == None:
-			log_str(ILLUST_EMPTY_INFO.format(self.class_name,pid))
+			log_str(TEMP_MSG["ILLUST_EMPTY_INFO"].format(self.class_name,pid))
 			return
 
 		# 数据库开关关闭
@@ -154,35 +154,50 @@ class Crawler(object):
 			isExists,path = self.db.check_illust(pid)
 			# 数据库无该记录
 			if isExists == False:
+				# 第一次更新,pid不存在/被删除/无法找到
+				if info == TEMP_MSG["PID_DELETED_TEXT"] or info == TEMP_MSG["PID_ERROR_TEXT"]:
+					return 
+
 				res = self.db.insert_illust(info)
-				if res == False:
-					log_str(INSERT_FAIL_INFO.format(self.class_name,pid))
+				if res:
+					log_str(TEMP_MSG["INSERT_SUCCESS_INFO"].format(self.class_name,pid))
 				else:
-					log_str(INSERT_SUCCESS_INFO.format(self.class_name,pid))
+					log_str(TEMP_MSG["INSERT_FAIL_INFO"].format(self.class_name,pid))
 			# 数据库有该记录
 			else:
-				self.db.update_illust(info)
+				# pid不存在/被删除
+				if info == TEMP_MSG["PID_DELETED_TEXT"]:
+					result = self.db.delete_user_illust(key="pid",value=pid)
+					# 删除成功
+					if result:
+						log_str(TEMP_MSG["DELELE_ILLUST_SUCCESS_INFO"].format(self.class_name,pid))
+					else:
+						log_str(TEMP_MSG["DELELE_ILLUST_FAIL_INFO"].format(self.class_name,pid))
+				else:
+					self.db.update_illust(info)
 		except Exception as e:
 			log_str("thread_by_illust|Exception {}".format(e))
 
 	def run(self):
-		log_str(BEGIN_INFO.format(self.class_name))
+		log_str(TEMP_MSG["BEGIN_INFO"].format(self.class_name))
 		try:
 			u_list = self.get_users()
 		except Exception as e:
 			log_str(e)
-			log_str(FOLLOW_ERROR_INFO.format(self.class_name))
-			log_str(SLEEP_INFO.format(self.class_name))
+			log_str(TEMP_MSG["FOLLOW_ERROR_INFO"].format(self.class_name))
+			log_str(TEMP_MSG["SLEEP_INFO"].format(self.class_name))
 			return
 		else:
 			if u_list != []:
-				log_str(FOLLOW_SUCCESS_INFO.format(self.class_name,len(u_list)))
+				log_str(TEMP_MSG["FOLLOW_SUCCESS_INFO"].format(self.class_name,len(u_list)))
+			# 关注列表为空
 			elif u_list == []:
-				log_str(NO_FOLLOW_USERS.format(self.class_name))
+				log_str(TEMP_MSG["NO_FOLLOW_USERS"].format(self.class_name))
 				return 
-			elif u_list == UL_TEXT:
-				log_str(UNLOGIN_INFO.format(self.class_name))
-				return 
+			# 未登录
+			elif u_list == TEMP_MSG["UL_TEXT"]:
+				log_str(TEMP_MSG["UNLOGIN_INFO"].format(self.class_name))
+				exit()
 
 		try:
 			pool = ThreadPool(8)
@@ -191,30 +206,37 @@ class Crawler(object):
 				if hasattr(self.db,"pool"):
 					latest_id = self.db.check_user(u)
 					d_total = self.db.get_total(u)
+					self.db.update_latest_id(u)
 				else:
 					latest_id,d_total = 0,0
 
 				position = "({}/{})".format(i+1,len(u_list))
 				if u["latest_id"] >= latest_id and d_total < len(all_illust):
 					# 满足条件更新
-					log_str(UPDATE_USER_INFO.format(position,self.class_name,u["userName"],u["uid"],len(all_illust),u["latest_id"]))
-					if hasattr(self.db,"pool"):
-						self.db.update_latest_id(u)
+					log_str(TEMP_MSG["UPDATE_USER_INFO"].format(position,self.class_name,u["userName"],u["uid"],len(all_illust),u["latest_id"]))
+					# if hasattr(self.db,"pool"):
+					# 	self.db.update_latest_id(u)
 
 					for pid in all_illust:
 						pool.put(self.thread_by_illust,(pid,),callback)
 
 					time.sleep(5)
 				else:
-					log_str(NOW_USER_INFO.format(position,self.class_name,u["userName"],u["uid"],len(all_illust)))
-					continue
-
+					log_str(TEMP_MSG["NOW_USER_INFO"].format(position,self.class_name,u["userName"],u["uid"],len(all_illust)))
+					# 本次更新user无作品
+					if u["latest_id"] == -1:
+						# 从数据库中删除所有符合u["uid"]的记录
+						result = self.db.delete_user_illust(key="uid",value=u["uid"])
+						if result:
+							log_str(TEMP_MSG["DELELE_USER_ILLUST_SUCCESS_INFO"].format(self.class_name,u["userName"],u["uid"]))
+						else:
+							log_str(TEMP_MSG["DELELE_USER_ILLUST_FAIL_INFO"].format(self.class_name,u["userName"],u["uid"]))
 		except Exception as e:
-			log_str("Exception {}".format(e))
+			log_str("Exception:{}".format(e))
 			pool.close()
 		finally:
 			pool.close()
-		log_str(SLEEP_INFO.format(self.class_name))
+		log_str(TEMP_MSG["SLEEP_INFO"].format(self.class_name))
 
 
 # if __name__ == '__main__':

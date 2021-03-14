@@ -21,8 +21,7 @@ from db import db_client
 from folder import file_manager
 from logstr import log_str
 from login import client
-from message import *
-from config import *
+from message import TEMP_MSG
 
 
 class Down(object):
@@ -88,11 +87,12 @@ class Down(object):
 			if retry_num > 0:
 				return self.baseRequest(options,data,params,retry_num-1)
 			else:
-				log_str(DM_NETWORK_ERROR_INFO.format(self.class_name,options["url"],e))
+				log_str(TEMP_MSG["DM_NETWORK_ERROR_INFO"].format(self.class_name,options["url"],e))
 				return None
 
 	def get_illust_info(self, pid, extra="pixiv"):
 		'''
+		整合作品数据
 		:parmas pid: 作品id,int类型
 		:parmas extra: 对不同模块设置对应的下载限制和拼接本地路径
 		:return data: 作品数据,字典
@@ -102,45 +102,65 @@ class Down(object):
 		动图 https://www.pixiv.net/ajax/illust/80373423
 		单图 https://www.pixiv.net/ajax/illust/77719030
 		'''
-		# time1 = time.time()
 		info_url = self.ajax_illust.format(pid)
 		r = self.baseRequest(options={"url":info_url})
 		if r == None:
 			return None
 
-		resp = json.loads(r.text)
-		# 未登录
-		if resp["message"] == UNLOGIN_TEXT:
-			log_str(UNLOGIN_INFO.format(self.class_name))
+		# json解析错误
+		try:
+			resp = json.loads(r.text)
+		except json.decoder.JSONDecodeError as e:
 			return None
 
-		if resp["error"] == True:
-			# 出错则不更新,不下载;
+		# 未登录
+		if resp["message"] == TEMP_MSG["UNLOGIN_TEXT"]:
+			log_str(TEMP_MSG["UNLOGIN_INFO"].format(self.class_name))
 			return None
-		
-		# 数据
+
+		# 出错则不更新不下载;
+		if resp["error"] == True:
+			# 判断其他状态
+			# 作品被删除--该作品已被删除，或作品ID不存在。
+			if resp["message"] == TEMP_MSG["PID_DELETED_TEXT"]:
+				return TEMP_MSG["PID_DELETED_TEXT"]
+			# pid错误--无法找到您所请求的页面
+			elif resp["message"] ==  TEMP_MSG["PID_ERROR_TEXT"]:
+				return TEMP_MSG["PID_ERROR_TEXT"]
+			else:
+				return None
+
+		# 作品数据
 		info = resp["body"]
+		# uid
 		uid = int(info["userId"])
+		# userName
 		userName = info["userName"]
+		# artworks_url
 		purl = self.artworks_url.format(pid)
+		# title
+		title = info.get("illustTitle","")
+		# tag形如<作者名称>、魅惑の谷間/魅惑的乳沟、下乳/南半「球」、青雲映す碧波
 		try:
-			title = info["illustTitle"]
-		except:
-			title = "None"
-		# tag形如魅惑の谷間/魅惑的乳沟、下乳/南半「球」、青雲映す碧波、
-		try:
-			tag = ""
+			tag_list = []
 			for i in info["tags"]["tags"]:
-				r = '{}、'.format(i["tag"])
-				if "translation" in i.keys():r = "{}/{}、".format(i["tag"],i["translation"]["en"])
-				tag += r
+				if "translation" in i.keys():
+					r = "{}/{}".format(i["tag"],i["translation"]["en"])
+				else:
+					r = i["tag"]
+				if r != "":
+					tag_list.append(r)
+			tag = "、".join(tag_list)
 		except:
-			tag = "None"
+			tag = ""
+		finally:
+			# 添加作者名称
+			tag  = "{}、".format(userName) + tag
 		# 作品类型
 		illustType = info["illustType"]
 		# 页数
 		pageCount = info["pageCount"]
-		# 0 False,1 True
+		# 是否为R-18
 		is_r18 = [1 if 'R-18' in tag else 0][0]
 		# 浏览人数
 		viewCount = info["viewCount"]
@@ -151,11 +171,14 @@ class Down(object):
 		# 评论人数
 		commentCount = info["commentCount"]
 		# 图片链接组
-		# 取数据,json.load(res[0]["urls"])
 		urls = str(info["urls"])
 		# 原图链接
 		original = info["urls"]["original"]
-		# 作品数据
+		# score&illust_level
+		score = round((bookmarkCount/viewCount),3)
+		illust_level = self.get_illust_level(score,bookmarkCount)
+
+		# 整合的作品数据
 		data = {
 			"uid":uid,
 			"userName":userName,
@@ -166,14 +189,17 @@ class Down(object):
 			"pageCount":pageCount,
 			"illustType":illustType,
 			"is_r18":is_r18,
+			"score":score,
+			"illust_level":illust_level,
 			"viewCount":viewCount,
 			"bookmarkCount":bookmarkCount,
 			"likeCount":likeCount,
 			"commentCount":commentCount,
 			"urls":urls,
-			"original":original
+			"original":original,
 		}
-		# extra对模式处理
+
+		# 根据extra字段获取对应的LIMIT和user_path
 		# bookmark表
 		if extra == "bookmark":
 			LIMIT = BOOKMARK_LIMIT
@@ -183,14 +209,9 @@ class Down(object):
 			LIMIT = USERS_LIMIT
 			user_path = self.file_manager.select_user_path(uid,userName)
 
-
-		"""
-		判断下载筛选条件
-		满足条件   --> 下载器 path=file_manager 入库
-		不满足条件 -->  ---      path=None      入库
-		"""
-		# 获取作品下载路径
-		# time2 = time.time()
+		# 判断下载筛选条件,获取作品下载路径
+		# 满足条件   --> 下载器 path=file_manager 入库
+		# 不满足条件 -->  ---      path=None      入库
 		if bookmarkCount > LIMIT:
 			path = self.file_manager.mkdir_illusts(user_path,pid)
 			data["path"] = path
@@ -201,11 +222,7 @@ class Down(object):
 			path = "None"
 			data["path"] = path
 			# log_str("id:{} 作品不满足条件,不下载".format(pid))
-		# time3 = time.time()
-		# print("{} 请求:{} 下载:{}".format(pid,round(time2-time1,2),round(time3-time2,2)))
-		# with open("res.txt","a+",encoding="utf8") as f:
-		# 	f.write("{} 请求:{} 下载:{}".format(pid,round(time2-time1,2),round(time3-time2,2)))
-		# 	f.write("\n")
+
 		return data
 
 	def filter(self, data):
@@ -251,7 +268,7 @@ class Down(object):
 			if c == None:
 				return None
 			size = self.downSomething(illustPath,c.content)
-			log_str(DM_DOWNLOAD_SUCCESS_INFO.format(self.class_name,name,self.size2Mb(size)))
+			log_str(TEMP_MSG["DM_DOWNLOAD_SUCCESS_INFO"].format(self.class_name,name,self.size2Mb(size)))
 			time.sleep(1)
 
 	def illustMulti(self, data):
@@ -267,7 +284,7 @@ class Down(object):
 
 		multi_json = json.loads(multi_resp.text)
 		if multi_json["error"] == True or multi_json["body"] == []:
-			log_str(ILLUST_EMPTY_INFO.format(self.class_name,data["pid"]))
+			log_str(TEMP_MSG["ILLUST_EMPTY_INFO"].format(self.class_name,data["pid"]))
 			return None
 		
 		for m in multi_json["body"]:
@@ -284,7 +301,7 @@ class Down(object):
 				if c == None:
 					return None
 				size = self.downSomething(illustPath,c.content)
-				log_str(DM_DOWNLOAD_SUCCESS_INFO.format(self.class_name,name,self.size2Mb(size)))
+				log_str(TEMP_MSG["DM_DOWNLOAD_SUCCESS_INFO"].format(self.class_name,name,self.size2Mb(size)))
 				time.sleep(1)
 
 	def illustGif(self, data):
@@ -340,7 +357,7 @@ class Down(object):
 			imageio.mimsave(illustPath,frames,duration=delay)
 			# 下载成功
 			size = os.path.getsize(illustPath)
-			log_str(DM_DOWNLOAD_SUCCESS_INFO.format(self.class_name,name,self.size2Mb(size)))
+			log_str(TEMP_MSG["DM_DOWNLOAD_SUCCESS_INFO"].format(self.class_name,name,self.size2Mb(size)))
 			# 删除解压出来的图片
 			for j in files:
 				os.remove(os.path.join(path_,j))
@@ -368,5 +385,52 @@ class Down(object):
 		else:
 			return "%.3fKb" %(size/1024)
 
+	def get_illust_level(self,score,bookmarkCount):
+		"""
+		根据score及bookmarkCount确认作品评分等级,默认为R
+		
+		:params score: 得分,bookmarkCount/viewCount -> float
+		:params bookmarkCount: 收藏数 -> int
+		:return: 'R','SR','SSR','UR'其中一个,不满足则默认R -> str
+		"""
+		# 判断评分等级
+		illust_level_list = ['R','SR','SSR','UR']
+		# 评分区间右侧边界值
+		illust_interval = {'R':0.140,'SR':0.260,'SSR':0.325,'UR':1.000}
+		illust_default_level = "R"
+		illust_level = ""
+
+		# === 针对浏览量大的热门作品 ===
+		# 从R中寻找SSR,不取边界值
+		if 20000 < bookmarkCount and score < illust_interval['R']:
+			illust_level = illust_level_list[2]
+
+		# 从SR中寻找UR,不取边界值
+		if 25000 < bookmarkCount and illust_interval['R'] < score < illust_interval['SR']:
+			illust_level = illust_level_list[3]
+
+		# 上述规则满足则返回illust_level
+		if illust_level:
+			return illust_level
+
+		# === 基本评分等级判定 ===
+		# R
+		if 0 <= score < illust_interval['R']:
+			illust_level = illust_level_list[0]
+		# SR
+		elif illust_interval['R'] <= score < illust_interval['SR']:
+			illust_level = illust_level_list[1]
+		# SSR
+		elif illust_interval['SR'] <= score < illust_interval['SSR']:
+			illust_level = illust_level_list[2]
+		# UR
+		elif illust_interval['SSR'] <= score <= illust_interval['UR']:
+			illust_level = illust_level_list[3]
+
+		# 6条规则都不满足则默认返回R
+		if not illust_level:
+			log_str("采取默认规则 score:{} bookmarkCount:{}".format(score,bookmarkCount))
+			return illust_default_level
+		return illust_level
 
 # Downloader = Down()

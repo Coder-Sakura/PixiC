@@ -1,4 +1,4 @@
-﻿CREATE DATABASE moe;
+﻿# CREATE DATABASE moe;
 CREATE DATABASE IF NOT EXISTS moe DEFAULT CHARSET utf8mb4;
 USE moe;
 
@@ -10,10 +10,12 @@ CREATE TABLE pixiv(
   pid int(10) NOT NULL,
   purl varchar(255) NOT NULL,
   title varchar(255) NOT NULL,
-  tag varchar(300) NOT NULL,
+  tag varchar(999) NOT NULL,
   pageCount int(3) NOT NULL,
   illustType tinyint(3) NOT NULL,
   is_r18 tinyint(1) NOT NULL,
+  score float(5,3) NOT NULL,
+  illust_level varchar(20) NOT NULL,
   viewCount int NOT NULL,
   bookmarkCount int NOT NULL,
   likeCount int NOT NULL,
@@ -42,10 +44,12 @@ CREATE TABLE bookmark(
   pid int(10) NOT NULL,
   purl varchar(255) NOT NULL,
   title varchar(255) NOT NULL,
-  tag varchar(300) NOT NULL,
+  tag varchar(999) NOT NULL,
   pageCount int(3) NOT NULL,
   illustType tinyint(3) NOT NULL,
   is_r18 tinyint(1) NOT NULL,
+  score float(5,3) NOT NULL,
+  illust_level varchar(20) NOT NULL,
   viewCount int NOT NULL,
   bookmarkCount int NOT NULL,
   likeCount int NOT NULL,
