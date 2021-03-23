@@ -13,9 +13,9 @@
 
 ---
 
-部署文档见  [wiki](https://github.com/Coder-Sakura/PixiC/wiki)(推荐) 或 [Blog](http://00102400.xyz/blog/2020/06/24/pixic-bu-shu/)
+部署文档见  [wiki](https://github.com/Coder-Sakura/PixiC/wiki)(推荐) 或 [Blog](http://mybot.top/blog/2020/06/24/pixic-bu-shu/)
 
-API文档：[wiki](https://github.com/Coder-Sakura/PixiC/wiki/API文档) 或 [Blog](http://00102400.xyz/blog/2020/07/08/pixicapi/)，[运行截图](https://github.com/Coder-Sakura/PixiC/wiki/运行截图)在wiki也有展示
+API文档：[wiki](https://github.com/Coder-Sakura/PixiC/wiki/API文档) 或 [Blog](http://mybot.top/blog/2020/07/08/pixicapi/)，[运行截图](https://github.com/Coder-Sakura/PixiC/wiki/运行截图)在wiki也有展示
 
 
 
