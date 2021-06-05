@@ -57,7 +57,7 @@ class db_client(object):
 		从数据库连接池中取出一个链接
 		"""
 		# connection()获取数据库连接
-		conn = self.pool.connection() 
+		conn = self.pool.connection()
 		cur = conn.cursor(DictCursor)
 		return conn,cur
 
@@ -293,6 +293,7 @@ class db_client(object):
 			extra=None, 
 			limit=None,
 			illust_level=None,
+			is_r18=True,
 			table="pixiv"
 		):
 		"""
@@ -300,6 +301,8 @@ class db_client(object):
 		:params extra: 指定tag组(str),如原创,碧蓝航线;最多两个
 		:params limit: 指定最低收藏数(str),
 		:params illust_level: 指定单个或多个评分等级(str) str;如:SR或R,SR,SSR,UR
+		:params is_r18: 是否开启R18;
+			默认True开启,False为关闭,关闭则会过滤掉tag中包含'R-18'的结果
 		:parmas table: 数据表
 
 		返回符合条件的所有pid
@@ -325,6 +328,12 @@ class db_client(object):
 			illust_level = ",".join(["'{}'".format(_) for _ in illust_level.split(",")])
 			illust_level_sql = """AND illust_level in ({}) """.format(str(illust_level))
 			sql += illust_level_sql
+
+		# 关闭r18
+		if not is_r18:
+			is_r18_sql = """AND tag NOT LIKE "%R-18%" """
+			sql += is_r18_sql
+
 		print(sql)
 		cur.execute(sql)
 		pid_list = cur.fetchall()

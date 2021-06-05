@@ -89,6 +89,8 @@ def random_info():
 		limit = request.form.get('limit',None)
 		# 指定评分区间,如指定作品在R,SR之中
 		illust_level = request.form.get('illust_level',None)
+		# 是否开启R-18,默认开启
+		is_r18 = request.form.get('is_r18',True)
 		# 指定数据表
 		table = request.form.get('table',"bookmark")
 
@@ -125,9 +127,20 @@ def random_info():
 			return jsonify({'result':[{"error":False,"message":TEMP_MSG["PARAM_ERROR"]}]})
 		# === extra ===
 
-		log_str("num:{},ex:{},limit:{},illust_level:{},table:{}".format(num,ex,limit,illust_level,table))
+		# === is_r18 ===
+		is_r18_items = {"True":True,"False":False}
+		if is_r18 not in list(is_r18_items.keys()):
+			return jsonify({'result':[{"error":False,"message":TEMP_MSG["PARAM_ERROR"]}]})
+		else:
+			is_r18 = is_r18_items[is_r18]
+		# === is_r18 ===
+
+		log_str("num:{},ex:{},limit:{}".format(num,ex,limit))
+		log_str("illust_level:{},is_r18:{},table:{}".format(illust_level,is_r18,table))
 		# 查询符合条件的所有pid_list
-		result_pid_list = db.random_illust(extra=ex,limit=limit,illust_level=illust_level,table=table)
+		result_pid_list = db.random_illust(extra=ex,limit=limit,
+											illust_level=illust_level,
+											is_r18=is_r18,table=table)
 
 		log_str("result_pid_list: {}".format(len(result_pid_list)))
 		# 数据库查询无结果
