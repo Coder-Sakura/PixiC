@@ -43,6 +43,8 @@ def get_info():
 	db = apier.db
 	if request.method == "POST":
 		pid = request.form.get('pid',None)
+		# 指定数据表
+		table = request.form.get('table',"bookmark")
 
 		# pid为int类型以外的
 		try:
@@ -60,7 +62,7 @@ def get_info():
 
 		try:
 			# r:list
-			r = db.select_illust(pid)
+			r = db.select_illust(pid=pid,table=table)
 			if r == "" or r == None:
 				return jsonify({'result':[{"error":False,"message":TEMP_MSG["NO_DATA_MESSAGE"]}]})
 			else:
@@ -123,7 +125,6 @@ def random_info():
 
 		# === extra ===
 		if type(ex) != type("test") and ex:
-			print(1)
 			return jsonify({'result':[{"error":False,"message":TEMP_MSG["PARAM_ERROR"]}]})
 		# === extra ===
 
