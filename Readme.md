@@ -1,42 +1,49 @@
-# PixiC V2.1.5 2021/03/14
+<div align="center">
 
----
+# PixiC
 
-**PixiC是一个专注于Pixiv个人插画下载和数据收集的Python爬虫**
+**一个专注于 [PIXIV](https://www.pixiv.net/) 收藏插画和关注画师数据收集的Python爬虫**
 
-+ 通过Selenium持久化cookie或用户自定义cookie从而绕过Google Recaptcha V3验证；
-+ 通过scheduler模块调度各个插件模块（关注模块、收藏模块、API模块）进行定时任务
+</div>
 
 </br>
 
-## 使用方法
+## 1、功能
 
 ---
 
-部署文档见  [wiki](https://github.com/Coder-Sakura/PixiC/wiki)(推荐) 或 [Blog](http://mybot.top/blog/2020/06/24/pixic-bu-shu/)
+**当前支持功能**
 
-API文档：[wiki](https://github.com/Coder-Sakura/PixiC/wiki/API文档) 或 [Blog](http://mybot.top/blog/2020/07/08/pixicapi/)，[运行截图](https://github.com/Coder-Sakura/PixiC/wiki/运行截图)在wiki也有展示
-
-
-
-## 1、PixiC目前支持功能：
-
-支持获取Chrome浏览器上登录的Pixiv账户cookie并持久化
-
-- [x] 支持用户自定义cookie池(单个或多个cookie)
+- [x] **支持获取Chrome浏览器登录的Pixiv账户并生成cookie文件持久化**（新设备直接使用该文件即可）
 - [x] **支持单图、多图、动图的原图下载**
-- [x] **支持下载账号关注用户的作品和数据入库**
-- [x] **支持下载账号收藏作品**
-- [x] 支持设置收藏限制数以进行筛选下载
-- [x] 支持数据库开关以决定是否使用数据库
-- [x] 支持API：查询pid信息接口、随机插画接口 (提供反代直连链接)
+- [x] **支持指定uid用户的关注画师作品的下载与数据收集**
+- [x] **支持指定uid用户的收藏作品的下载与数据收集**
+- [x] 提供作品下载最低收藏数限制 --> [传送门](https://github.com/Coder-Sakura/PixiC/wiki/%E5%85%B3%E4%BA%8EPixiC%E9%85%8D%E7%BD%AE%E7%9A%84%E4%B8%89%E8%A8%80%E4%B8%A4%E8%AF%AD#%E5%87%A0%E7%A7%8D%E5%B8%B8%E8%A7%81%E5%9C%BA%E6%99%AF%E7%9A%84config%E6%96%87%E4%BB%B6%E9%85%8D%E7%BD%AE)
+- [x] 提供pixiv作品稀有度划分 --> [传送门](https://github.com/Coder-Sakura/PixiC/wiki/%E5%85%B3%E4%BA%8EPixiC%E7%9A%84%E6%9D%82%E8%B0%88#%E5%85%B3%E4%BA%8E%E4%BD%9C%E5%93%81%E7%A8%80%E6%9C%89%E5%BA%A6%E5%88%92%E5%88%86)
+- [x] 提供API以查询pid信息、随机插画接口 (含反代直连)
+- [x] 可通过用户自定义cookie池(单个或多个cookie)
+- [x] 可通过数据库开关以决定是否使用数据库收集数据
+
+
+
+TODO list
+
 - [ ] 日榜、周榜、月榜 
+- [ ] 线程级任务状态通知用户（server酱、邮件等）
 
 
 
 ## 2、基本使用
 
-请参考**使用方法**的<部署文档>完成环境搭建和依赖安装，接着运行
+---
+
++ 部署文档：  [wiki](https://github.com/Coder-Sakura/PixiC/wiki) (推荐) 或 [Blog](http://mybot.top/blog/2020/06/24/pixic-bu-shu/)
+
++ 运行截图戳这：[运行截图](https://github.com/Coder-Sakura/PixiC/wiki/运行截图)
+
+
+
+请参考<部署文档>完成环境搭建和依赖安装，接着运行
 
 ```
 python scheduler.py
@@ -44,11 +51,15 @@ python scheduler.py
 
 
 
-## 3、关于PixiC与qq机器人
+## 3、用途展示
 
-目前使用Flask + go-cqhttp + PixiC可实现随机涩图、查询指定pid信息等机器人功能。
+---
 
-效果如下，机器人还未开源出来，除了对接PixiC API还有其他功能，敬请期待吧。
+### 随机pixiv插画
+
+> PixiC API + [Mybot机器人](https://github.com/WriteCode-ChangeWorld/mybot)或其他qq机器人 可实现<请求API获取随机pixiv插画>
+
+> Mybot现正处于开发阶段，欢迎star和fork
 
 + 查询pid
 
@@ -60,10 +71,17 @@ python scheduler.py
 
 
 
-## 写在结尾的话
+### 阅读3.0 订阅源
+
+有空闲时间，会将本人制作的订阅源文件放出，在此先附上效果图
+
+![](https://s2.loli.net/2022/01/21/2Nh9r8gRYeSI5s4.jpg)
+
+
+
+## 结尾的话
 
 ---
 
-+ 之前存在一个V1.0版本，不过结构简单、功能也不多，后面准备关注画师作品下载和收藏下载功能单独做出来，后续会放到[Tools](https://github.com/WriteCode-ChangeWorld/Tools)上。
-+ **现在的V2.0版本更健壮，功能更多。旨在简单配置后，敲下回车即能获取到Pixiv账号的数据和作品**
-+ 个人技术能力有限，欢迎反馈 bug 和提出建议。
++ 希望可以提交`issue`和`pr`来帮助本项目进行完善，也欢迎`fork`和`star`本项目以对作者表示支持，感谢！
++ 本仓库仅用于学习与交流使用，因使用而产生的一切纠纷与原作者无关。
