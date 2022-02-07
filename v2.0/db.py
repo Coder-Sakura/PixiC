@@ -334,7 +334,7 @@ class db_client(object):
 			is_r18_sql = """AND tag NOT LIKE "%R-18%" """
 			sql += is_r18_sql
 
-		print(sql)
+		log_str(sql)
 		cur.execute(sql)
 		pid_list = cur.fetchall()
 		if len(pid_list) == 0:

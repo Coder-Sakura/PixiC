@@ -213,7 +213,7 @@ class Crawler(object):
 				position = "({}/{})".format(i+1,len(u_list))
 				if u["latest_id"] >= latest_id and d_total < len(all_illust):
 					# 满足条件更新
-					log_str(TEMP_MSG["UPDATE_USER_INFO"].format(position,self.class_name,u["userName"],u["uid"],len(all_illust),u["latest_id"]))
+					log_str(TEMP_MSG["UPDATE_USER_INFO"].format(self.class_name,position,u["userName"],u["uid"],len(all_illust),u["latest_id"]))
 					# if hasattr(self.db,"pool"):
 					# 	self.db.update_latest_id(u)
 
@@ -222,7 +222,7 @@ class Crawler(object):
 
 					time.sleep(5)
 				else:
-					log_str(TEMP_MSG["NOW_USER_INFO"].format(position,self.class_name,u["userName"],u["uid"],len(all_illust)))
+					log_str(TEMP_MSG["NOW_USER_INFO"].format(self.class_name,position,u["userName"],u["uid"],len(all_illust)))
 					# 本次更新user无作品
 					if u["latest_id"] == -1:
 						# 从数据库中删除所有符合u["uid"]的记录
