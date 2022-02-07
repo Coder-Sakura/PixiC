@@ -131,7 +131,7 @@ class Bookmark(object):
 			else:
 				# pid不存在/被删除
 				if info == TEMP_MSG["PID_DELETED_TEXT"]:
-					result = self.db.delete_user_illust(key="pid",value=pid)
+					result = self.db.delete_user_illust(key="pid",value=pid,table="bookmark")
 					# 删除成功
 					if result:
 						log_str(TEMP_MSG["DELELE_ILLUST_SUCCESS_INFO"].format(self.class_name,pid))
