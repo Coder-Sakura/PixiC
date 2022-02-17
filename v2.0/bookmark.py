@@ -4,19 +4,21 @@
 time: 2020-05-11
 author: coder_sakura
 """
-import math
+# import math
 import json
 import time
 
-from downer import Down
-from logstr import log_str
+from downer import Downloader
+from log_record import logger
 from message import TEMP_MSG
 from thread_pool import ThreadPool,callback
+# TODO
+from tag import TAG_FLAG_BOOKMARK
 
 
 class Bookmark(object):
 	def __init__(self):
-		self.Downloader = Down()
+		self.Downloader = Downloader()
 		self.user_id = self.Downloader.client.user_id
 		self.base_request = self.Downloader.baseRequest
 		
@@ -46,7 +48,7 @@ class Bookmark(object):
 			r = json.loads(self.base_request({"url":self.bookmark_url},params=params).text)
 		except Exception as e:
 			# 网络请求出错
-			log_str(TEMP_MSG["BOOKMARK_PAGE_ERROR_INFO"].format(self.class_name,offset,offset+self.bookmark_page_offset))
+			logger.warning(TEMP_MSG["BOOKMARK_PAGE_ERROR_INFO"].format(self.class_name,offset,offset+self.bookmark_page_offset))
 			return None
 		else:
 			# 未登录
@@ -68,31 +70,31 @@ class Bookmark(object):
 
 		# 数据库开关若关闭,直接更新
 		if hasattr(self.db,"pool") == False:
-			log_str(TEMP_MSG["UPDATE_INFO"].format(self.class_name))
+			logger.warning(TEMP_MSG["UPDATE_INFO"].format(self.class_name))
 			return True
 
 		res = self.get_page_bookmark(0)
 
 		if res == TEMP_MSG["UL_TEXT"]:
-			log_str(TEMP_MSG["UPDATE_CHECK_ERROR_INFO"].format(self.class_name))
+			logger.warning(TEMP_MSG["UPDATE_CHECK_ERROR_INFO"].format(self.class_name))
 			return False
 
 		if res == None:
-			log_str(TEMP_MSG["UPDATE_CHECK_ERROR_INFO"].format(self.class_name))
+			logger.warning(TEMP_MSG["UPDATE_CHECK_ERROR_INFO"].format(self.class_name))
 			return False
 			
 		# res类型不等于列表
 		if type(res) != type([]):
-			log_str(TEMP_MSG["UPDATE_CHECK_ERROR_INFO"].format(self.class_name))
+			logger.warning(TEMP_MSG["UPDATE_CHECK_ERROR_INFO"].format(self.class_name))
 			return False
 
 		# 验证前十张
 		for pid in res[:10]:
 			if self.db.check_illust(pid,table="bookmark")[0] == False:
-				log_str(TEMP_MSG["UPDATE_INFO"].format(self.class_name))
+				logger.success(TEMP_MSG["UPDATE_INFO"].format(self.class_name))
 				return True
 		else:
-			log_str(TEMP_MSG["UPDATE_CANLE_INFO"].format(self.class_name))
+			logger.warning(TEMP_MSG["UPDATE_CANLE_INFO"].format(self.class_name))
 			return False
 
 	def thread_by_illust(self, *args):
@@ -103,11 +105,11 @@ class Bookmark(object):
 		try:
 			info = self.Downloader.get_illust_info(pid,extra="bookmark")
 		except Exception as e:
-			log_str(TEMP_MSG["ILLUST_NETWORK_ERROR_INFO"].format(self.class_name,pid,e))
+			logger.warning(TEMP_MSG["ILLUST_NETWORK_ERROR_INFO"].format(self.class_name,pid,e))
 			return 
 
 		if info == None:
-			log_str(TEMP_MSG["ILLUST_EMPTY_INFO"].format(self.class_name,pid))
+			logger.warning(TEMP_MSG["ILLUST_EMPTY_INFO"].format(self.class_name,pid))
 			return
 
 		# 数据库开关关闭
@@ -124,9 +126,9 @@ class Bookmark(object):
 					
 				res = self.db.insert_illust(info,table="bookmark")
 				if res:
-					log_str(TEMP_MSG["INSERT_SUCCESS_INFO"].format(self.class_name,pid))
+					logger.success(TEMP_MSG["INSERT_SUCCESS_INFO"].format(self.class_name,pid))
 				else:
-					log_str(TEMP_MSG["INSERT_FAIL_INFO"].format(self.class_name,pid))
+					logger.warning(TEMP_MSG["INSERT_FAIL_INFO"].format(self.class_name,pid))
 			# 数据库有该记录
 			else:
 				# pid不存在/被删除
@@ -134,19 +136,21 @@ class Bookmark(object):
 					result = self.db.delete_user_illust(key="pid",value=pid,table="bookmark")
 					# 删除成功
 					if result:
-						log_str(TEMP_MSG["DELELE_ILLUST_SUCCESS_INFO"].format(self.class_name,pid))
+						logger.success(TEMP_MSG["DELELE_ILLUST_SUCCESS_INFO"].format(self.class_name,pid))
 					else:
-						log_str(TEMP_MSG["DELELE_ILLUST_FAIL_INFO"].format(self.class_name,pid))
+						logger.warning(TEMP_MSG["DELELE_ILLUST_FAIL_INFO"].format(self.class_name,pid))
 				else:
 					self.db.update_illust(info,table="bookmark")
 		except Exception as e:
-			log_str("thread_by_illust|Exception {}".format(e))
+			logger.warning("thread_by_illust|Exception {}".format(e))
 
 	def run(self):
-		log_str(TEMP_MSG["BEGIN_INFO"].format(self.class_name))
+		# TDOD TAG COUNT开始工作
+		TAG_FLAG_BOOKMARK = False
+		logger.info(TEMP_MSG["BEGIN_INFO"].format(self.class_name))
 		# 更新机制判定
 		if self.check_update() == False:
-			log_str(TEMP_MSG["SLEEP_INFO"].format(self.class_name))
+			logger.info(TEMP_MSG["SLEEP_INFO"].format(self.class_name))
 			return
 
 		try:
@@ -156,25 +160,25 @@ class Bookmark(object):
 				# 累计更新小于5次,更新前800张,最多848张
 				if self.day_count < self.day_all_update_num:
 					if offset > self.day_limit:
-						log_str(TEMP_MSG["UPDATE_DAY_LIMIT_INFO"].format(self.class_name,self.day_limit,self.day_count))
+						logger.info(TEMP_MSG["UPDATE_DAY_LIMIT_INFO"].format(self.class_name,self.day_limit,self.day_count))
 						break
 
 				pid_list = self.get_page_bookmark(offset)
 				# 获取异常返回None
 				if pid_list == None:
-					log_str(TEMP_MSG["BOOKMARK_PAGE_ERROR_INFO"].format(self.class_name,offset,offset+self.bookmark_page_offset))
+					logger.warning(TEMP_MSG["BOOKMARK_PAGE_ERROR_INFO"].format(self.class_name,offset,offset+self.bookmark_page_offset))
 					continue
 				
 				# 未登录
 				if pid_list == TEMP_MSG["UL_TEXT"]:
-					log_str(TEMP_MSG["UNLOGIN_INFO"].format(self.class_name))
+					logger.warning(TEMP_MSG["UNLOGIN_INFO"].format(self.class_name))
 					break
 
 				# 无收藏返回[]
 				if pid_list == []:
 					break
 
-				log_str(TEMP_MSG["BOOKMARK_NOW_INFO"].format(self.class_name,offset,offset+self.bookmark_page_offset,len(pid_list)))
+				logger.info(TEMP_MSG["BOOKMARK_NOW_INFO"].format(self.class_name,offset,offset+self.bookmark_page_offset,len(pid_list)))
 				for pid in pid_list:
 					pool.put(self.thread_by_illust,(pid,),callback)
 
@@ -182,18 +186,20 @@ class Bookmark(object):
 
 				time.sleep(1)
 		except Exception as e:
-			log_str("Exception {}".format(e))
+			logger.warning("Exception {}".format(e))
 		finally:
 			# 累计等于5次,不触发更新限制机制,全更新完后恢复day_count
 			if self.day_count == self.day_all_update_num:
-				log_str(TEMP_MSG["UPDATE_DAY_ALL_INFO"].format(self.class_name))
+				logger.success(TEMP_MSG["UPDATE_DAY_ALL_INFO"].format(self.class_name))
 				self.day_count = 0
 			else:
 				self.day_count += 1
 
 			pool.close()
-		log_str(TEMP_MSG["SLEEP_INFO"].format(self.class_name))
-		log_str("="*48)
+			# TDOD TAG COUNT完成工作
+			TAG_FLAG_BOOKMARK = True
+		logger.info(TEMP_MSG["SLEEP_INFO"].format(self.class_name))
+		logger.info("="*48)
 
 
 # if __name__ == '__main__':

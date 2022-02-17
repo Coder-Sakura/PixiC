@@ -5,7 +5,7 @@ from multiprocessing import Process
 from config import API_HOST,API_PORT,BOOKMARK_CYCLE,DB_ENABLE,USERS_CYCLE,\
 	PIXIV_BOOKMARK_ENABLED,PIXIV_CRAWLER_ENABLED,PIXIV_API_ENABLED
 from login import client
-from logstr import log_str
+from log_record import logger
 from message import TEMP_MSG
 
 
@@ -38,7 +38,7 @@ class Scheduler(object):
 			time.sleep(BOOKMARK_CYCLE)
 
 	def run(self):
-		log_str(TEMP_MSG["VERSION_INFO"])
+		logger.success(TEMP_MSG["VERSION_INFO"])
 		# client更新cookie
 		client.check()
 

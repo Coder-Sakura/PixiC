@@ -19,12 +19,13 @@ requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 from config import USERS_LIMIT,BOOKMARK_LIMIT
 from db import db_client
 from folder import file_manager
-from logstr import log_str
+from log_record import logger
 from login import client
 from message import TEMP_MSG
 
 
-class Down(object):
+# class Down(object):
+class Downloader:
 	def __init__(self):
 		self.class_name = self.__class__.__name__
 		self.se = requests.session()
@@ -50,7 +51,7 @@ class Down(object):
 		# 多图-每张图的url组
 		self.multi_url = "https://www.pixiv.net/ajax/illust/{}/pages"
 
-		# log_str("user_id",self.client.user_id)
+		# print("user_id",self.client.user_id)
 
 	def baseRequest(self, options, data=None, params=None, retry_num=5):
 		'''
@@ -61,7 +62,7 @@ class Down(object):
 	    :return: response对象/False
 
 	    列表推导式作用在于: 优先使用options中的headers,否则使用self.headers
-	    比如：添加referer,referer需要是上一个页面的url,则可以自定义请求头
+	    比如:添加referer,referer需要是上一个页面的url,则可以自定义请求头
 	    demo_headers = headers.copy()
 	    demo_headers['referer']  = 'www.example.com'
 	    options ={"url":"origin_url","headers":demo_headers}
@@ -72,7 +73,7 @@ class Down(object):
 		try:
 			# if options["method"].lower() == "get":
 			# 网络请求函数get、post请求,暂时不判断method字段,待后续更新
-			# log_str("cookie_list {}".format(len(self.cookie_list)))
+			# logger.debug("cookie_list {}".format(len(self.cookie_list)))
 			response = self.se.get(
 	    			options["url"],
 	    			data = data,
@@ -87,7 +88,7 @@ class Down(object):
 			if retry_num > 0:
 				return self.baseRequest(options,data,params,retry_num-1)
 			else:
-				log_str(TEMP_MSG["DM_NETWORK_ERROR_INFO"].format(self.class_name,options["url"],e))
+				logger.warning(TEMP_MSG["DM_NETWORK_ERROR_INFO"].format(self.class_name,options["url"],e))
 				return None
 
 	def get_illust_info(self, pid, extra="pixiv"):
@@ -115,7 +116,7 @@ class Down(object):
 
 		# 未登录
 		if resp["message"] == TEMP_MSG["UNLOGIN_TEXT"]:
-			log_str(TEMP_MSG["UNLOGIN_INFO"].format(self.class_name))
+			logger.warning(TEMP_MSG["UNLOGIN_INFO"].format(self.class_name))
 			return None
 
 		# 出错则不更新不下载;
@@ -216,12 +217,12 @@ class Down(object):
 			path = self.file_manager.mkdir_illusts(user_path,pid)
 			data["path"] = path
 			# 下载器启动
-			# log_str("id:{} 作品正在下载".format(pid))
+			# logger.info("id:{} 作品正在下载".format(pid))
 			self.filter(data)
 		else:
 			path = "None"
 			data["path"] = path
-			# log_str("id:{} 作品不满足条件,不下载".format(pid))
+			# logger.info("id:{} 作品不满足条件,不下载".format(pid))
 
 		return data
 
@@ -261,14 +262,14 @@ class Down(object):
 
 		if os.path.exists(illustPath) == True and os.path.getsize(illustPath) > 1000:
 			# 作品存在且大于1000字节,为了避免58字节错误页面和其他错误页面
-			# log_str("{}已存在".format(name))
+			# logger.info("{}已存在".format(name))
 			pass
 		else:
 			c = self.baseRequest(options={"url":original})
 			if c == None:
 				return None
 			size = self.downSomething(illustPath,c.content)
-			log_str(TEMP_MSG["DM_DOWNLOAD_SUCCESS_INFO"].format(self.class_name,name,self.size2Mb(size)))
+			logger.success(TEMP_MSG["DM_DOWNLOAD_SUCCESS_INFO"].format(self.class_name,name,self.size2Mb(size)))
 			time.sleep(1)
 
 	def illustMulti(self, data):
@@ -284,7 +285,7 @@ class Down(object):
 
 		multi_json = json.loads(multi_resp.text)
 		if multi_json["error"] == True or multi_json["body"] == []:
-			log_str(TEMP_MSG["ILLUST_EMPTY_INFO"].format(self.class_name,data["pid"]))
+			logger.info(TEMP_MSG["ILLUST_EMPTY_INFO"].format(self.class_name,data["pid"]))
 			return None
 		
 		for m in multi_json["body"]:
@@ -294,14 +295,14 @@ class Down(object):
 			name = new_original.split("/")[-1].replace("_p","-")
 			illustPath = os.path.join(path_,name)
 			if os.path.exists(illustPath) == True and os.path.getsize(illustPath) > 1000:
-				# log_str("{}已存在".format(name))
+				# logger.debug("{}已存在".format(name))
 				pass
 			else:
 				c = self.baseRequest(options={"url":new_original})
 				if c == None:
 					return None
 				size = self.downSomething(illustPath,c.content)
-				log_str(TEMP_MSG["DM_DOWNLOAD_SUCCESS_INFO"].format(self.class_name,name,self.size2Mb(size)))
+				logger.success(TEMP_MSG["DM_DOWNLOAD_SUCCESS_INFO"].format(self.class_name,name,self.size2Mb(size)))
 				time.sleep(1)
 
 	def illustGif(self, data):
@@ -321,7 +322,7 @@ class Down(object):
 		illustPath = os.path.join(path_,name)
 
 		if os.path.exists(illustPath) == True and os.path.getsize(illustPath) > 1000:
-			# log_str("{}已存在".format(name))
+			# logger.debug("{}已存在".format(name))
 			pass
 		else:
 			z_info = self.baseRequest(options={"url":zipInfoUrl})
@@ -357,7 +358,7 @@ class Down(object):
 			imageio.mimsave(illustPath,frames,duration=delay)
 			# 下载成功
 			size = os.path.getsize(illustPath)
-			log_str(TEMP_MSG["DM_DOWNLOAD_SUCCESS_INFO"].format(self.class_name,name,self.size2Mb(size)))
+			logger.success(TEMP_MSG["DM_DOWNLOAD_SUCCESS_INFO"].format(self.class_name,name,self.size2Mb(size)))
 			# 删除解压出来的图片
 			for j in files:
 				os.remove(os.path.join(path_,j))
@@ -429,7 +430,7 @@ class Down(object):
 
 		# 6条规则都不满足则默认返回R
 		if not illust_level:
-			log_str("采取默认规则 score:{} bookmarkCount:{}".format(score,bookmarkCount))
+			logger.info("采取默认规则 score:{} bookmarkCount:{}".format(score,bookmarkCount))
 			return illust_default_level
 		return illust_level
 

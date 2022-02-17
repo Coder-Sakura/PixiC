@@ -9,7 +9,7 @@ from pymysql.cursors import DictCursor
 # from config import *
 from config import DB_ENABLE,DB_HOST,DB_USER,\
 	DB_PASSWD,DB_DATABASE,DB_PORT,DB_CHARSET
-from logstr import log_str
+from log_record import logger
 from message import TEMP_MSG
 
 
@@ -37,7 +37,7 @@ class db_client(object):
 		if DB_ENABLE == False:
 			return
 
-		log_str(TEMP_MSG["DB_INST"].format(self.class_name))
+		logger.info(TEMP_MSG["DB_INST"].format(self.class_name))
 		try:
 			self.pool = PooledDB(		
 			    creator=pymysql,
@@ -49,7 +49,7 @@ class db_client(object):
 			    host=DB_HOST,user=DB_USER,passwd=DB_PASSWD,db=DB_DATABASE,port=DB_PORT,charset=DB_CHARSET
 			)
 		except pymysql.err.OperationalError as e:
-			log_str(TEMP_MSG["DB_CONNECT_ERROR_INFO"].format(e))
+			logger.warning(TEMP_MSG["DB_CONNECT_ERROR_INFO"].format(e))
 			exit()
 
 	def get_conn(self):
@@ -90,7 +90,7 @@ class db_client(object):
 		cur.execute(sql_1,uid)
 		res = cur.fetchall()
 		e = res[0]["COUNT(uid)"]
-		# log_str("查询结果 :{}".format(e))
+		# logger.debug("查询结果 :{}".format(e))
 
 		if e >= 1:
 			# 返回数据库中查询的latest_id
@@ -103,7 +103,7 @@ class db_client(object):
 				cur.execute(sql_2,data)
 				conn.commit()
 			except Exception as e:
-				log_str(e)
+				logger.warning(f"<Exception> - {e}")
 				conn.rollback()
 				# 默认全更新
 				return u["latest_id"]
@@ -144,7 +144,7 @@ class db_client(object):
 			cur.execute(sql,data)
 			conn.commit()
 		except Exception as e:
-			log_str("{} | {}".format(e,u))
+			logger.warning("{} | {}".format(e,u))
 			conn.rollback()
 		finally:
 			cur.close()
@@ -178,12 +178,12 @@ class db_client(object):
 			sql = """SELECT COUNT(1),path FROM {} """.format(table) + """WHERE {}=%s GROUP BY path""".format(key)
 		else:
 			sql = """SELECT COUNT(1) FROM {} """.format(table) + """WHERE {}=%s""".format(key)
-		# log_str(sql)
+		# logger.debug(sql)
 		data = (value)
 		try:
 			cur.execute(sql,data)
 		except Exception as e:
-			log_str("{}:check_illust | {}".format(self.class_name,e))
+			logger.warning("{}:check_illust | {}".format(self.class_name,e))
 			return False,""
 		else:
 			# 未使用GROUP BY path,非严格模式报1140
@@ -219,7 +219,7 @@ class db_client(object):
 			cur.execute(sql,data)
 			conn.commit()
 		except Exception as e:
-			log_str("{} | {}".format(e,u))
+			logger.warning("{} | {}".format(e,u))
 			conn.rollback()
 			return False
 		else:
@@ -252,8 +252,8 @@ class db_client(object):
 			cur.execute(sql,data)
 			conn.commit()
 		except Exception as e:
-			log_str(TEMP_MSG["DB_UPDATE_ILLUST_ERROR_INFO"].format(self.class_name,u["pid"],e))
-			log_str(u)
+			logger.warning(TEMP_MSG["DB_UPDATE_ILLUST_ERROR_INFO"].format(self.class_name,u["pid"],e))
+			logger.warning(f"illust_data - {u}")
 			conn.rollback()
 			return False
 		else:
@@ -275,7 +275,7 @@ class db_client(object):
 		try:
 			cur.execute(sql,data)
 		except Exception as e:
-			log_str(e)
+			logger.warning(f"<Exception> - {e}")
 			return
 		else:
 			r = cur.fetchall()
@@ -334,7 +334,7 @@ class db_client(object):
 			is_r18_sql = """AND tag NOT LIKE "%R-18%" """
 			sql += is_r18_sql
 
-		log_str(sql)
+		logger.debug(sql)
 		cur.execute(sql)
 		pid_list = cur.fetchall()
 		if len(pid_list) == 0:
@@ -362,7 +362,7 @@ class db_client(object):
 			cur.execute(sql,data)
 			conn.commit()
 		except Exception as e:
-			log_str("{} | {}".format(e,(key,value)))
+			logger.warning("{} | {}".format(e,(key,value)))
 			conn.rollback()
 			return False
 		else:
