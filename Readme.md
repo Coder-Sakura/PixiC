@@ -74,7 +74,7 @@ python scheduler.py
 
 ### 阅读3.0 订阅源
 
-有空闲时间，会将本人制作的订阅源文件放出，在此先附上效果图
+订阅源链接: [蓝奏云](https://python.lanzout.com/b0bsanjmj)  密码: hsvs
 
 ![](https://s2.loli.net/2022/01/21/2Nh9r8gRYeSI5s4.jpg)
 
