@@ -12,6 +12,7 @@ from downer import Downloader
 from log_record import logger
 from message import TEMP_MSG
 from thread_pool import ThreadPool,callback
+from tag import TAG_FLAG_USER
 
 
 class Crawler(object):
