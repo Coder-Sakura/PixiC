@@ -8,6 +8,7 @@ author: coder_sakura
 import json
 import time
 
+from config import BOOKMARK_HIDE_ENABLE
 from downer import Downloader
 from log_record import logger
 from message import TEMP_MSG
@@ -23,26 +24,32 @@ class Bookmark(object):
 		self.base_request = self.Downloader.baseRequest
 		
 		self.bookmark_url = "https://www.pixiv.net/ajax/user/{}/illusts/bookmarks".format(self.user_id)
+		self.rest_list = ["show", "hide"] if BOOKMARK_HIDE_ENABLE else ["show"]
+		self.rest_dict = {"show": "公开", "hide": "未公开"}
+		
 		self.db = self.Downloader.db
 		self.bookmark_page_offset = 48
 		self.class_name = self.__class__.__name__
+
 		# 2020/10/20 收藏更新机制
 		# 默认第一次全更新
 		self.day_count = 5
 		self.day_all_update_num = 5
 		self.day_limit = 800
 
-	def get_page_bookmark(self, offset):
+	def get_page_bookmark(self, offset, rest="show", raw=False):
 		"""
 		根据offset和limit获取收藏插画的pid
 		:params offset: 偏移量
+		:params rest: 公开/未公开收藏
+		:params raw: 是否返回原始数据
 		:return :对应offset和limit的pid列表,int类型
 		"""
 		params = {
-			"tag":"",
-			"offset":offset,
-			"limit":self.bookmark_page_offset,
-			"rest":"show",			
+			"tag": "",
+			"offset": offset,
+			"limit": self.bookmark_page_offset,
+			"rest": rest,
 		}
 		try:
 			r = json.loads(self.base_request({"url":self.bookmark_url},params=params).text)
@@ -55,6 +62,8 @@ class Bookmark(object):
 			if r["message"] == TEMP_MSG["UNLOGIN_TEXT"]:
 				return TEMP_MSG["UL_TEXT"]
 
+			if raw:
+				return r
 			res = r["body"]["works"]
 			illusts_pid = [int(i["id"]) for i in res]
 			return illusts_pid
@@ -73,29 +82,50 @@ class Bookmark(object):
 			logger.warning(TEMP_MSG["UPDATE_INFO"].format(self.class_name))
 			return True
 
-		res = self.get_page_bookmark(0)
+		# 判断非公开及公开
+		res = self.get_page_bookmark(offset=0, raw=True)
+		if BOOKMARK_HIDE_ENABLE:
+			res_hide = self.get_page_bookmark(offset=0, rest="hide", raw=True)
 
+		# 未登录
 		if res == TEMP_MSG["UL_TEXT"]:
 			logger.warning(TEMP_MSG["UPDATE_CHECK_ERROR_INFO"].format(self.class_name))
 			return False
 
-		if res == None:
+		# 公开收藏 - 错误
+		if res["error"]:
 			logger.warning(TEMP_MSG["UPDATE_CHECK_ERROR_INFO"].format(self.class_name))
-			return False
-			
-		# res类型不等于列表
-		if type(res) != type([]):
-			logger.warning(TEMP_MSG["UPDATE_CHECK_ERROR_INFO"].format(self.class_name))
+			logger.warning(f"<res> - {res}")
 			return False
 
 		# 验证前十张
-		for pid in res[:10]:
-			if self.db.check_illust(pid,table="bookmark")[0] == False:
+		for _ in res["body"]["works"][:10]:
+			if not self.db.check_illust(int(_["id"]),table="bookmark")[0]:
 				logger.success(TEMP_MSG["UPDATE_INFO"].format(self.class_name))
 				return True
-		else:
-			logger.warning(TEMP_MSG["UPDATE_CANLE_INFO"].format(self.class_name))
-			return False
+		
+		if BOOKMARK_HIDE_ENABLE:
+			# 未公开收藏 - 错误/无权限
+			if res_hide["error"]:
+				if TEMP_MSG["NO_AUTH"] in res_hide["message"]:
+					logger.warning(TEMP_MSG["UPDATE_CHECK_NO_AUTH_INFO"].format(
+						self.class_name, self.user_id, self.user_id))
+				else:
+					logger.warning(TEMP_MSG["UPDATE_CHECK_ERROR_INFO"].format(self.class_name))
+				logger.warning(f"<res_hide> - {res_hide}")
+				return False
+			# 作品为空
+			if not res["body"]["works"] and not res_hide["body"]["works"]:
+				logger.warning(TEMP_MSG["UPDATE_CHECK_EMPTY_INFO"].format(self.class_name))
+				return False
+			# 验证前十张
+			for _ in res_hide["body"]["works"][:10]:
+				if not self.db.check_illust(int(_["id"]),table="bookmark")[0]:
+					logger.success(TEMP_MSG["UPDATE_INFO"].format(self.class_name))
+					return True
+		
+		logger.warning(TEMP_MSG["UPDATE_CANLE_INFO"].format(self.class_name))
+		return False
 
 	def thread_by_illust(self, *args):
 		"""
@@ -144,6 +174,7 @@ class Bookmark(object):
 		except Exception as e:
 			logger.warning("thread_by_illust|Exception {}".format(e))
 
+	@logger.catch
 	def run(self):
 		# TDOD TAG COUNT开始工作
 		TAG_FLAG_BOOKMARK = False
@@ -156,35 +187,44 @@ class Bookmark(object):
 		try:
 			offset = 0
 			pool = ThreadPool(8)
-			while True:
-				# 累计更新小于5次,更新前800张,最多848张
-				if self.day_count < self.day_all_update_num:
-					if offset > self.day_limit:
-						logger.info(TEMP_MSG["UPDATE_DAY_LIMIT_INFO"].format(self.class_name,self.day_limit,self.day_count))
+			# 分别获取公开/非公开收藏插画
+			for rest in self.rest_list:
+				logger.info(f"===== 开始获取{self.rest_dict[rest]}收藏 =====")
+				while True:
+					# 累计更新小于5次,更新前800张(实际为768) TODO
+					if self.day_count < self.day_all_update_num:
+						if offset > self.day_limit:
+							logger.info(TEMP_MSG["UPDATE_DAY_LIMIT_INFO"].format(self.class_name,self.day_limit,self.day_count))
+							break
+
+					pid_list = self.get_page_bookmark(offset, rest)
+					# 获取异常返回None
+					if pid_list == None:
+						logger.warning(TEMP_MSG["BOOKMARK_PAGE_ERROR_INFO"].format(
+							self.class_name, self.rest_dict[rest],
+							offset, offset+self.bookmark_page_offset
+						))
+						continue
+					
+					# 未登录
+					if pid_list == TEMP_MSG["UL_TEXT"]:
+						logger.warning(TEMP_MSG["UNLOGIN_INFO"].format(self.class_name))
 						break
 
-				pid_list = self.get_page_bookmark(offset)
-				# 获取异常返回None
-				if pid_list == None:
-					logger.warning(TEMP_MSG["BOOKMARK_PAGE_ERROR_INFO"].format(self.class_name,offset,offset+self.bookmark_page_offset))
-					continue
-				
-				# 未登录
-				if pid_list == TEMP_MSG["UL_TEXT"]:
-					logger.warning(TEMP_MSG["UNLOGIN_INFO"].format(self.class_name))
-					break
+					# 无收藏返回[]
+					if pid_list == []:
+						logger.warning(TEMP_MSG["BOOKMARK_PAGE_EMPTY_INFO"].format(self.class_name,
+							offset, offset+self.bookmark_page_offset))
+						offset = 0
+						break
 
-				# 无收藏返回[]
-				if pid_list == []:
-					break
+					logger.info(TEMP_MSG["BOOKMARK_NOW_INFO"].format(self.class_name,offset,offset+self.bookmark_page_offset,len(pid_list)))
+					for pid in pid_list:
+						pool.put(self.thread_by_illust,(pid,),callback)
 
-				logger.info(TEMP_MSG["BOOKMARK_NOW_INFO"].format(self.class_name,offset,offset+self.bookmark_page_offset,len(pid_list)))
-				for pid in pid_list:
-					pool.put(self.thread_by_illust,(pid,),callback)
+					offset += self.bookmark_page_offset
 
-				offset += self.bookmark_page_offset
-
-				time.sleep(1)
+					time.sleep(1)
 		except Exception as e:
 			logger.warning("Exception {}".format(e))
 		finally:
@@ -198,8 +238,8 @@ class Bookmark(object):
 			pool.close()
 			# TDOD TAG COUNT完成工作
 			TAG_FLAG_BOOKMARK = True
-		logger.info(TEMP_MSG["SLEEP_INFO"].format(self.class_name))
 		logger.info("="*48)
+		logger.info(TEMP_MSG["SLEEP_INFO"].format(self.class_name))
 
 
 # if __name__ == '__main__':

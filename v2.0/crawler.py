@@ -22,7 +22,7 @@ class Crawler(object):
 		self.base_request = self.Downloader.baseRequest
 
 		# 公开/非公开 见get_page_users
-		self.rest_list = ["show","hide"]
+		self.rest_list = ["show", "hide"]
 		# 画师列表
 		self.follw_url = "https://www.pixiv.net/ajax/user/{}/following".format(self.user_id)
 		# 作品链接,存数据库
@@ -33,15 +33,15 @@ class Crawler(object):
 		self.db = self.Downloader.db
 		self.class_name = self.__class__.__name__
 
-	def get_page_users(self,offset,rest="show"):
+	def get_page_users(self, offset, rest="show"):
 		"""
 		:params offset 偏移量,按照偏移量获得limit范围内的画师
 		:return 接口数据中的画师数组
 		"""
 		params = {
-			"offset":offset,
-			"limit":100,
-			"rest":rest,			
+			"offset": offset,
+			"limit": 100,
+			"rest": rest,			
 		}
 		try:
 			r = json.loads(self.base_request({"url":self.follw_url},params=params).text)
@@ -179,6 +179,7 @@ class Crawler(object):
 		except Exception as e:
 			logger.warning("thread_by_illust|Exception {}".format(e))
 
+	@logger.catch
 	def run(self):
 		# 开始工作
 		TAG_FLAG_USER = False
@@ -241,6 +242,7 @@ class Crawler(object):
 			pool.close()
 			# 完成工作
 			TAG_FLAG_USER = True
+		logger.info("="*48)
 		logger.info(TEMP_MSG["SLEEP_INFO"].format(self.class_name))
 
 

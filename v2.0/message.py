@@ -37,17 +37,25 @@ TEMP_MSG = {
 	"UPDATE_USER_INFO": "{}:{}更新画师:{}(uid:{}) | 作品数:{} 最新作品:{}",
 	"NOW_USER_INFO": "{}:{}当前画师:{}(uid:{}) |作品数: {}",
 	"NO_FOLLOW_USERS": "{}:关注列表为空",
-	"DELELE_USER_ILLUST_SUCCESS_INFO": "{}:删除画师作品记录:{}(uid:{}) | 该画师在pixiv已无作品",
+	"DELELE_USER_ILLUST_SUCCESS_INFO": "{}:删除画师作品记录成功:{}(uid:{}) | 该画师在pixiv已无作品",
 	"DELELE_USER_ILLUST_FAIL_INFO": "{}:删除画师作品记录失败:{}(uid:{}) | 该画师在pixiv已无作品",
 
 	# BM
-	"BOOKMARK_PAGE_ERROR_INFO": "{}:获取收藏出错: 第{}-{}张失败",
+	"BOOKMARK_PAGE_ERROR_INFO": "{}:获取{}收藏出错: 第{}-{}张失败",
+	"BOOKMARK_PAGE_EMPTY_INFO": "{}:当前收藏: 第{}-{}张为空",
 	"BOOKMARK_NOW_INFO": "{}:当前收藏:第{}-{}张获取成功,共{}张可用",
 	"UPDATE_INFO": "{}:进行更新",
 	"UPDATE_CANLE_INFO": "{}:暂不更新",
 	"UPDATE_CHECK_ERROR_INFO": "{}:检查更新出错!",
+	"UPDATE_CHECK_EMPTY_INFO": "{}:公开/未公开收藏均为空,暂不更新",
+	"UPDATE_CHECK_NO_AUTH_INFO": "{}:\n当前使用的< pixiv_cookie内的账号信息 >与< 要获取的未公开收藏的账号(uid:{}) >不是同一个!"\
+								"\n如需继续获取该账号(uid:{})的未公开收藏,请按以下步骤操作:\n1. 备份并删除pixiv_cookie"\
+								"\n2. 将config.py中的COOKIE_UPDATE_ENABLED设置为True\n3. 在chrome上登录对应的pixiv账号"\
+								"\n4. 重新运行PixiC即可."\
+								"\n\n取消获取该账号的未公开收藏,将BOOKMARK_HIDE_ENABLE设置为False即可",
 	"UPDATE_DAY_LIMIT_INFO": "{}:达到每日更新量:{}张,当前位于周期更新第{}天",
 	"UPDATE_DAY_ALL_INFO": "{}:已对所有收藏作品进行全更新,day_count将清零",
+	"NO_AUTH" : "没有权限",
 
 	# 线程函数通用
 	"ILLUST_NETWORK_ERROR_INFO": "{}:{}请求错误,{}",

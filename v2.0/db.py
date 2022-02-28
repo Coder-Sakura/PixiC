@@ -183,7 +183,7 @@ class db_client(object):
 		try:
 			cur.execute(sql,data)
 		except Exception as e:
-			logger.warning("{}:check_illust | {}".format(self.class_name,e))
+			logger.warning(f"Exception: {e} - {key}:{value}")
 			return False,""
 		else:
 			# 未使用GROUP BY path,非严格模式报1140
