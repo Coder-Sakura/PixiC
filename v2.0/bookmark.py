@@ -13,8 +13,6 @@ from downer import Downloader
 from log_record import logger
 from message import TEMP_MSG
 from thread_pool import ThreadPool,callback
-# TODO
-from tag import TAG_FLAG_BOOKMARK
 
 
 class Bookmark(object):
