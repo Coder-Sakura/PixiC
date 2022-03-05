@@ -99,6 +99,7 @@ class Crawler(object):
 					userName = re.sub(r'[\s\/:*?"<>|\\]','_',u["userName"])
 					user_info["userName"] = userName
 
+					# 画师/用户无作品
 					if u["illusts"] == []:
 						user_info["latest_id"] = -1
 						logger.warning(TEMP_MSG["FOLLOW_NO_ILLUSTS_INFO"].format(self.class_name,u["userName"],u["userId"]))
@@ -131,6 +132,37 @@ class Crawler(object):
 			return []
 		else:
 			return user_illust_list
+
+	def check_account_byDB(self):
+		_index_id = 1
+		_limit = 100
+		logger.info("check_account_byDB START.")
+
+		while True:
+			db_user_data = self.db.select_user(start_id=_index_id, table="pxusers")
+			# 数据表无数据返回
+			if not db_user_data:
+				logger.info("check_account_byDB END.")
+				break
+			else:
+				for _user_data in db_user_data:
+					illust_url = self.all_illust_url.format(_user_data["uid"])
+					try:
+						u_json = json.loads(self.base_request({"url":illust_url}).text)
+					except json.decoder.JSONDecodeError:
+						u_json = {"error":False, "message":"", "body":[]}
+
+					# 已注销账户
+					if u_json.get("error",False) and \
+						TEMP_MSG["USER_LEAVE_PIXIV_INFO_CN"] in u_json["message"] and \
+						not u_json["body"]:
+						logger.warning(f"""DELETE {_user_data["uid"]} | {_user_data["userName"]} records in """\
+							"""TABLES - pixiv /bookmark /pxusers""")
+						self.db.delete_user_illust(key="uid",value=_user_data["uid"],table="pixiv")
+						self.db.delete_user_illust(key="uid",value=_user_data["uid"],table="bookmark")
+						self.db.delete_user_illust(key="uid",value=_user_data["uid"],table="pxusers")
+					
+					_index_id += _limit
 
 	def thread_by_illust(self, *args):
 		"""
@@ -203,8 +235,9 @@ class Crawler(object):
 				logger.warning(TEMP_MSG["UNLOGIN_INFO"].format(self.class_name))
 				exit()
 
+		pool = ThreadPool(8)
 		try:
-			pool = ThreadPool(8)
+			# 任务:获取关注列表
 			for i,u in enumerate(u_list):
 				all_illust = self.get_user_illust(u)
 				if hasattr(self.db,"pool"):
@@ -215,6 +248,7 @@ class Crawler(object):
 					latest_id,d_total = 0,0
 
 				position = "({}/{})".format(i+1,len(u_list))
+				# 满足作品更新条件
 				if u["latest_id"] >= latest_id and d_total < len(all_illust):
 					# 满足条件更新
 					logger.info(TEMP_MSG["UPDATE_USER_INFO"].format(self.class_name,position,u["userName"],u["uid"],len(all_illust),u["latest_id"]))
@@ -225,12 +259,16 @@ class Crawler(object):
 						pool.put(self.thread_by_illust,(pid,),callback)
 
 					time.sleep(5)
+				# 无作品更新
 				else:
 					logger.info(TEMP_MSG["NOW_USER_INFO"].format(self.class_name,position,u["userName"],u["uid"],len(all_illust)))
-					# 本次更新user无作品
+					# 画师/用户未注销账号 - 无作品
 					if u["latest_id"] == -1:
-						# 从数据库中删除所有符合u["uid"]的记录
-						result = self.db.delete_user_illust(key="uid",value=u["uid"])
+						# 删除对应uid的插画数据 - pixiv
+						result = self.db.delete_user_illust(key="uid",value=u["uid"],table="pixiv")
+						# 删除对应uid的插画数据 - bookmark
+						# 修复<random>API接口使用<bookmark>表会返回在pixiv已被删除的pid
+						result = self.db.delete_user_illust(key="uid",value=u["uid"],table="bookmark")
 						if result:
 							logger.success(TEMP_MSG["DELELE_USER_ILLUST_SUCCESS_INFO"].format(self.class_name,u["userName"],u["uid"]))
 						else:
@@ -242,6 +280,11 @@ class Crawler(object):
 			pool.close()
 			# 完成工作
 			TAG_FLAG_USER = True
+
+		# 任务:对已注销画师/用户的数据进行删除
+		self.check_account_byDB()
+		# ======================================
+
 		logger.info("="*48)
 		logger.info(TEMP_MSG["SLEEP_INFO"].format(self.class_name))
 

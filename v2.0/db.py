@@ -289,6 +289,34 @@ class db_client(object):
 			cur.close()
 			conn.close()
 
+	def select_user(self, start_id, limit=100, table="pxusers"):
+		"""
+		获取关注列表用户的数据库信息
+		:params start_id: 自增id
+		:params limit: 每次返回的数据, -1不做限制
+		"""
+		conn,cur = self.get_conn()
+		if limit != -1:
+			limit_sql = f"LIMIT {limit}"
+
+
+		sql = f"""SELECT id,uid,userName FROM {table} WHERE id>=%s {limit_sql}"""
+		data = (start_id,)
+		try:
+			cur.execute(sql,data)
+		except Exception as e:
+			logger.warning(f"<Exception> - {e}")
+			return
+		else:
+			r = cur.fetchall()
+			if len(r) != 0:
+				return r
+			else:
+				return
+		finally:
+			cur.close()
+			conn.close()
+
 	def random_illust(self,
 			extra=None, 
 			limit=None,

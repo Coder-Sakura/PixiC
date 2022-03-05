@@ -5,7 +5,7 @@ time: 2020-05-29
 author: coder_sakura
 """
 
-VERSION = "v2.1.5"
+VERSION = "v2.1.6"
 # ================================================
 TEMP_MSG = {
 	"VERSION_INFO": "==========PixiC-{}==========".format(VERSION),
@@ -39,6 +39,7 @@ TEMP_MSG = {
 	"NO_FOLLOW_USERS": "{}:关注列表为空",
 	"DELELE_USER_ILLUST_SUCCESS_INFO": "{}:删除画师作品记录成功:{}(uid:{}) | 该画师在pixiv已无作品",
 	"DELELE_USER_ILLUST_FAIL_INFO": "{}:删除画师作品记录失败:{}(uid:{}) | 该画师在pixiv已无作品",
+	"USER_LEAVE_PIXIV_INFO_CN": "您当前所寻找的个用户已经离开了pixiv",
 
 	# BM
 	"BOOKMARK_PAGE_ERROR_INFO": "{}:获取{}收藏出错: 第{}-{}张失败",
