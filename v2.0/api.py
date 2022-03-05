@@ -53,19 +53,19 @@ def get_info():
 		except:
 			message = TEMP_MSG["PARAM_ERROR"].format("pid", pid)
 			logger.warning(message)
-			return jsonify({'result':[{"error":True, "message":message}]})
+			return jsonify({'result':[],"error":True, "message":message})
 			
 		# 无传参pid,pid长度异常
 		if pid == None or len(pid) > 20:
 			message = TEMP_MSG["PARAM_ERROR"].format("pid", pid)
 			logger.warning(message)
-			return jsonify({'result':[{"error":True, "message":message}]})
+			return jsonify({'result':[],"error":True, "message":message})
 
 		# pid小于0
 		if int(pid) < 0:
 			message = TEMP_MSG["PARAM_ERROR"].format("pid", pid)
 			logger.warning(message)
-			return jsonify({'result':[{"error":True, "message":message}]})
+			return jsonify({'result':[],"error":True, "message":message})
 
 		try:
 			# r:list
@@ -74,24 +74,24 @@ def get_info():
 			if r == "" or r == None:
 				message = TEMP_MSG["NO_DATA_MESSAGE"].format(pid)
 				logger.warning(message)
-				return jsonify({'result':[{"error":False, "message":message}]})
+				return jsonify({'result':[],"error":False, "message":message})
 			else:
 				res = r[0]
 				# 删除path
 				del res["path"]
 				res["reverse_url"] = db.pixiv_re_proxy(res)
-				_urls = json.loads(r["urls"].replace("'",'"'))
-				r["reverse_url_api_original"] = _urls["original"].replace("i.pximg.net","i.pixiv.re")
-				r["reverse_url_api_regular"] = _urls["regular"].replace("i.pximg.net","i.pixiv.re")
-				res["error"],res["message"] = False,""
+				_urls = json.loads(res["urls"].replace("'",'"'))
+				res["reverse_url_api_original"] = _urls["original"].replace("i.pximg.net","i.pixiv.re")
+				res["reverse_url_api_regular"] = _urls["regular"].replace("i.pximg.net","i.pixiv.re")
+				# res["error"],res["message"] = False,""
 				logger.debug(res)
 		except Exception as e:
 			logger.warning("Exception: {}".format(e))
 			message = TEMP_MSG["INTERNAL_ERROR_MESSAGE"].format("Exception", e)
-			return jsonify({'result':[{"error":True, "message":message}]})
+			return jsonify({'result':[],"error":True, "message":message})
 		else:
 			logger.debug(f"<res> - {res}")
-			return jsonify({'result':[res]})
+			return jsonify({'result':[res],"error":False, "message":""})
 
 # 随机获取1~10条记录，最多指定2个tag
 @app.route('/api/v2/random',methods=['GET','POST'])
@@ -120,12 +120,12 @@ def random_info():
 		except:
 			message = TEMP_MSG["PARAM_ERROR"].format("num", num)
 			logger.warning(message)
-			return jsonify({'result':[{"error":True, "message":message}]})
+			return jsonify({'result':[],"error":True, "message":message})
 		# num <= 0
 		if int(num) <= 0:
 			message = TEMP_MSG["PARAM_ERROR"].format("num", num)
 			logger.warning(message)
-			return jsonify({'result':[{"error":True, "message":message}]})
+			return jsonify({'result':[],"error":True, "message":message})
 		# 大于单次返回最低限制
 		if int(num) > RANDOM_LIMIT:
 			logger.info(f"<num> - {num} greater than <RANDOM_LIMIT>")
@@ -141,19 +141,19 @@ def random_info():
 			except:
 				message = TEMP_MSG["PARAM_ERROR"].format("limit", limit)
 				logger.warning(message)
-				return jsonify({'result':[{"error":True, "message":message}]})
+				return jsonify({'result':[],"error":True, "message":message})
 			# limit <= 0
 			if int(limit) <= 0:
 				message = TEMP_MSG["PARAM_ERROR"].format("limit", limit)
 				logger.warning(message)
-				return jsonify({'result':[{"error":True, "message":message}]})
+				return jsonify({'result':[],"error":True, "message":message})
 		# === limit ===
 
 		# === extra ===
 		if type(ex) != type("test") and ex:
 			message = TEMP_MSG["PARAM_ERROR"].format("ex", ex)
 			logger.warning(message)
-			return jsonify({'result':[{"error":True, "message":message}]})
+			return jsonify({'result':[],"error":True, "message":message})
 		# === extra ===
 
 		# === is_r18 ===
@@ -161,7 +161,7 @@ def random_info():
 		if is_r18 not in list(is_r18_items.keys()):
 			message = TEMP_MSG["PARAM_ERROR"].format("is_r18", is_r18)
 			logger.warning(message)
-			return jsonify({'result':[{"error":True, "message":message}]})
+			return jsonify({'result':[],"error":True, "message":message})
 		else:
 			is_r18 = is_r18_items[is_r18]
 		# === is_r18 ===
@@ -176,7 +176,7 @@ def random_info():
 		if result_pid_list == []:
 			message = TEMP_MSG["NO_TAG_MESSAGE"]
 			logger.warning(message)
-			return jsonify({'result':[{"error":False, "message":message}]})
+			return jsonify({'result':[],"error":False, "message":message})
 
 		# 数据库查询结果数量小于需求数量
 		if len(result_pid_list) < int(num):
@@ -193,12 +193,12 @@ def random_info():
 			_urls = json.loads(r["urls"].replace("'",'"'))
 			r["reverse_url_api_original"] = _urls["original"].replace("i.pximg.net","i.pixiv.re")
 			r["reverse_url_api_regular"] = _urls["regular"].replace("i.pximg.net","i.pixiv.re")
-			r["error"],r["message"] = False,""
+			# r["error"],r["message"] = False,""
 			res.append(r)
 
 		res = [dict(t) for t in set([tuple(d.items()) for d in res])]
 		logger.debug(f"<res> - {res} | <count> - {len(result_pid_list)}")
-		return jsonify({'result':res, 'count':len(result_pid_list)})
+		return jsonify({'result':res, 'count':len(result_pid_list), "error":False, "message":""})
 
 # TODO 查询数据库数据表中是否有对应字段的记录
 @app.route('/api/v2/check_item',methods=['GET','POST'])
@@ -214,7 +214,7 @@ def check_item():
 			result = db.check_illust(value,key,table,database)
 		except Exception as e:
 			result = [TEMP_MSG["API_ERROR"]]
-		return jsonify({'result':[{"error":False, "message":result[0]}]})
+		return jsonify({'result':[],"error":False, "message":result[0]})
 
 # TODO 向数据库插入数据
 @app.route('/api/v2/insert',methods=['GET','POST'])
@@ -223,11 +223,11 @@ def insert2db():
 
 @app.errorhandler(404)
 def error404(error):
-	return jsonify({'result':[{"error":True, "message":TEMP_MSG["API_ADD_ERROR"]}]})
+	return jsonify({'result':[],"error":True, "message":TEMP_MSG["API_ADD_ERROR"]})
 
 @app.errorhandler(500)
 def error500(error):
-	return jsonify({'result':[{"error":True, "message":TEMP_MSG["API_ERROR"]}]})
+	return jsonify({'result':[],"error":True, "message":TEMP_MSG["API_ERROR"]})
 
 
 # if __name__ == '__main__':
