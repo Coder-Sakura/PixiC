@@ -189,6 +189,7 @@ def random_info():
 			r = db.select_illust(_["pid"],table=table)[0]
 			# 删除path
 			del r["path"]
+			r["reverse_url"] = db.pixiv_re_proxy(r)
 			_urls = json.loads(r["urls"].replace("'",'"'))
 			r["reverse_url_api_original"] = _urls["original"].replace("i.pximg.net","i.pixiv.re")
 			r["reverse_url_api_regular"] = _urls["regular"].replace("i.pximg.net","i.pixiv.re")
