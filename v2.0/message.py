@@ -42,7 +42,7 @@ TEMP_MSG = {
 	"USER_LEAVE_PIXIV_INFO_CN": "您当前所寻找的个用户已经离开了pixiv",
 
 	# BM
-	"BOOKMARK_PAGE_ERROR_INFO": "{}:获取{}收藏出错: 第{}-{}张失败",
+	"BOOKMARK_PAGE_ERROR_INFO": "{}:获取收藏出错: 第{}-{}张失败",
 	"BOOKMARK_PAGE_EMPTY_INFO": "{}:当前收藏: 第{}-{}张为空",
 	"BOOKMARK_NOW_INFO": "{}:当前收藏:第{}-{}张获取成功,共{}张可用",
 	"UPDATE_INFO": "{}:进行更新",
