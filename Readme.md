@@ -2,7 +2,7 @@
 
 # PixiC V2.1.6
 
-**一个专注于 [PIXIV](https://www.pixiv.net/) 收藏插画和关注画师数据收集的Python爬虫**
+## **一个专注于 [PIXIV](https://www.pixiv.net/) 收藏插画和关注画师数据收集的Python爬虫**
 
 </div>
 
@@ -25,24 +25,24 @@
 - [x] 可通过数据库开关以决定是否使用数据库收集数据
 - [x] 日志功能
 
-
+</br>
 
 TODO list
 
 - [ ] 日榜、周榜、月榜 
 - [ ] 线程级任务状态通知用户（server酱、邮件等）
 
-
+</br>
 
 ## 2、基本使用
 
 ---
 
-+ 部署文档：  [wiki](https://github.com/Coder-Sakura/PixiC/wiki) (推荐) 或 [Blog](http://mybot.top/blog/2020/06/24/pixic-bu-shu/)
-
++ 部署文档：  [WIKI](https://github.com/Coder-Sakura/PixiC/wiki) (推荐) 或 [Blog](http://mybot.top/blog/2020/06/24/pixic-bu-shu/)
 + 运行截图戳这：[运行截图](https://github.com/Coder-Sakura/PixiC/wiki/运行截图)
++ 注意事项戳这：[注意事项](https://github.com/Coder-Sakura/PixiC/wiki/%E6%B3%A8%E6%84%8F%E4%BA%8B%E9%A1%B9)
 
-
+</br>
 
 请参考<部署文档>完成环境搭建和依赖安装，接着运行
 
@@ -50,7 +50,7 @@ TODO list
 python scheduler.py
 ```
 
-
+</br>
 
 ## 3、用途展示
 
