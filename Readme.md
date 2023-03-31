@@ -1,6 +1,6 @@
 <div align="center">
 
-# PixiC V2.1.7
+# PixiC V2.1.8
 
 ## **一个专注于 [PIXIV](https://www.pixiv.net/) 收藏插画和关注画师数据收集的Python爬虫**
 
