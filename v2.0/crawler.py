@@ -8,11 +8,13 @@ import json
 import time
 import re
 
+from config import SKIP_ISEXISTS_ILLUST,ROOT_PATH
 from downer import Downloader
 from log_record import logger
 from message import TEMP_MSG
 from thread_pool import ThreadPool,callback
 from tag import TAG_FLAG_USER
+from ptimer import Timer
 
 
 class Crawler(object):
@@ -134,6 +136,9 @@ class Crawler(object):
 			return user_illust_list
 
 	def check_account_byDB(self):
+		if hasattr(self.db,"pool") == False:
+			return 
+
 		_index_id = 1
 		_limit = 100
 		logger.info("check_account_byDB START.")
@@ -169,19 +174,41 @@ class Crawler(object):
 		线程任务函数
 		"""
 		pid = args[0]
+		uid = args[1]
+		info = None
+		
+		# 跳过已下载插画的请求
+		if SKIP_ISEXISTS_ILLUST and self.file_manager.search_isExistsPid(
+			ROOT_PATH,"c",*(uid,pid,)):
+			logger.info(f"SKIP_ISEXISTS_ILLUST - {uid} - {pid}")
+			return info
+
 		try:
 			info = self.Downloader.get_illust_info(pid)
 		except Exception as e:
 			logger.warning(TEMP_MSG["ILLUST_NETWORK_ERROR_INFO"].format(self.class_name,pid,e))
-			return 
+			logger.warning(f"{pid} INFO:{info}")
+			return info
 
-		if info == None:
+		if not info:
 			logger.warning(TEMP_MSG["ILLUST_EMPTY_INFO"].format(self.class_name,pid))
-			return
+			return info
+
+		if info == TEMP_MSG["LIMIT_TEXT"]:
+			logger.warning(TEMP_MSG["LIMIT_TEXT_RESP"].format(pid))
+			timer = Timer()
+			timer.Downloader = self.Downloader
+			timer.pid = pid
+			timer.extra = "pixiv"
+			try:
+				info = timer.waiting(info)
+			except Exception as e:
+				logger.warning(f"Exception - {e} - {info}")
+			logger.success(f"共休眠{timer._time}秒,重新恢复访问")
 
 		# 数据库开关关闭
 		if hasattr(self.db,"pool") == False:
-			return 
+			return info
 
 		try:
 			isExists,path = self.db.check_illust(pid)
@@ -198,8 +225,9 @@ class Crawler(object):
 					logger.warning(TEMP_MSG["INSERT_FAIL_INFO"].format(self.class_name,pid))
 			# 数据库有该记录
 			else:
-				# pid不存在/被删除
-				if info == TEMP_MSG["PID_DELETED_TEXT"]:
+				# pid不存在/已删除/已设为私密/无权限访问
+				if info == TEMP_MSG["PID_DELETED_TEXT"] or\
+					info == TEMP_MSG["PID_UNAUTH_ACCESS"]:
 					result = self.db.delete_user_illust(key="pid",value=pid)
 					# 删除成功
 					if result:
@@ -210,6 +238,7 @@ class Crawler(object):
 					self.db.update_illust(info)
 		except Exception as e:
 			logger.warning("thread_by_illust|Exception {}".format(e))
+			logger.warning(f"{pid} INFO:{info}")
 
 	@logger.catch
 	def run(self):
@@ -256,14 +285,15 @@ class Crawler(object):
 					# 	self.db.update_latest_id(u)
 
 					for pid in all_illust:
-						pool.put(self.thread_by_illust,(pid,),callback)
+						pool.put(self.thread_by_illust,(pid,u["uid"],),callback)
 
+					# 固定休眠
 					time.sleep(5)
 				# 无作品更新
 				else:
 					logger.info(TEMP_MSG["NOW_USER_INFO"].format(self.class_name,position,u["userName"],u["uid"],len(all_illust)))
 					# 画师/用户未注销账号 - 无作品
-					if u["latest_id"] == -1:
+					if u["latest_id"] == -1 and hasattr(self.db,"pool") == True:
 						# 删除对应uid的插画数据 - pixiv
 						result = self.db.delete_user_illust(key="uid",value=u["uid"],table="pixiv")
 						# 删除对应uid的插画数据 - bookmark

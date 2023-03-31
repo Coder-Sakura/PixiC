@@ -8,11 +8,12 @@ author: coder_sakura
 import json
 import time
 
-from config import BOOKMARK_HIDE_ENABLE
+from config import BOOKMARK_HIDE_ENABLE,SKIP_ISEXISTS_ILLUST,BOOKMARK_PATH
 from downer import Downloader
 from log_record import logger
 from message import TEMP_MSG
 from thread_pool import ThreadPool,callback
+from ptimer import Timer
 # TODO
 from tag import TAG_FLAG_BOOKMARK
 
@@ -28,6 +29,7 @@ class Bookmark(object):
 		self.rest_dict = {"show": "公开", "hide": "未公开"}
 		
 		self.db = self.Downloader.db
+		self.file_manager = self.Downloader.file_manager
 		self.bookmark_page_offset = 48
 		self.class_name = self.__class__.__name__
 
@@ -132,19 +134,40 @@ class Bookmark(object):
 		线程任务函数
 		"""
 		pid = args[0]
+		info = None
+
+		# 跳过已下载插画的请求
+		if SKIP_ISEXISTS_ILLUST and self.file_manager.search_isExistsPid(
+			BOOKMARK_PATH,"b",*(pid,)):
+			logger.info(f"SKIP_ISEXISTS_ILLUST - {pid}")
+			return info
+
 		try:
 			info = self.Downloader.get_illust_info(pid,extra="bookmark")
 		except Exception as e:
 			logger.warning(TEMP_MSG["ILLUST_NETWORK_ERROR_INFO"].format(self.class_name,pid,e))
-			return 
+			logger.warning(f"{pid} INFO:{info}")
+			return info
 
-		if info == None:
+		if not info: 
 			logger.warning(TEMP_MSG["ILLUST_EMPTY_INFO"].format(self.class_name,pid))
-			return
+			return info
+
+		if info == TEMP_MSG["LIMIT_TEXT"]:
+			logger.warning(TEMP_MSG["LIMIT_TEXT_RESP"].format(pid))
+			timer = Timer()
+			timer.Downloader = self.Downloader
+			timer.pid = pid
+			timer.extra = "bookmark"
+			try:
+				info = timer.waiting(info)
+			except Exception as e:
+				logger.warning(f"Exception - {e} - {info}")
+			logger.success(f"共休眠{timer._time}秒,重新恢复访问")
 
 		# 数据库开关关闭
 		if hasattr(self.db,"pool") == False:
-			return 
+			return info
 
 		try:
 			isExists,path = self.db.check_illust(pid,table="bookmark")
@@ -152,7 +175,7 @@ class Bookmark(object):
 			if isExists == False:
 				# 第一次更新,pid不存在/被删除/无法找到
 				if info == TEMP_MSG["PID_DELETED_TEXT"] or info == TEMP_MSG["PID_ERROR_TEXT"]:
-					return 
+					return info
 					
 				res = self.db.insert_illust(info,table="bookmark")
 				if res:
@@ -161,8 +184,9 @@ class Bookmark(object):
 					logger.warning(TEMP_MSG["INSERT_FAIL_INFO"].format(self.class_name,pid))
 			# 数据库有该记录
 			else:
-				# pid不存在/被删除
-				if info == TEMP_MSG["PID_DELETED_TEXT"]:
+				# pid不存在/已删除/已设为私密/无权限访问
+				if info == TEMP_MSG["PID_DELETED_TEXT"] or\
+					info == TEMP_MSG["PID_UNAUTH_ACCESS"]:
 					result = self.db.delete_user_illust(key="pid",value=pid,table="bookmark")
 					# 删除成功
 					if result:
@@ -173,6 +197,7 @@ class Bookmark(object):
 					self.db.update_illust(info,table="bookmark")
 		except Exception as e:
 			logger.warning("thread_by_illust|Exception {}".format(e))
+			logger.warning(f"{pid} INFO:{info}")
 
 	@logger.catch
 	def run(self):
@@ -218,12 +243,12 @@ class Bookmark(object):
 						offset = 0
 						break
 
-					logger.info(TEMP_MSG["BOOKMARK_NOW_INFO"].format(self.class_name,offset,offset+self.bookmark_page_offset,len(pid_list)))
+					logger.info(TEMP_MSG["BOOKMARK_NOW_INFO"].format(offset,offset+self.bookmark_page_offset,len(pid_list)))
 					for pid in pid_list:
 						pool.put(self.thread_by_illust,(pid,),callback)
 
 					offset += self.bookmark_page_offset
-
+					# 固定休眠
 					time.sleep(1)
 		except Exception as e:
 			logger.warning("Exception {}".format(e))

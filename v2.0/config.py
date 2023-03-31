@@ -50,6 +50,11 @@ ORIGI_COOKIE_LIST = []
 
 
 # =============== 控制开关 ===============
+# 一般用于增量/快速更新,默认为开
+# 1.打开此开关将不再请求已下载到ROOT_PATH/BOOKMARK_PATH的pid插画
+# 2.同时也无法更新对应pid在数据库中的记录
+SKIP_ISEXISTS_ILLUST = True
+
 # 关注画师爬虫控制开关
 PIXIV_CRAWLER_ENABLED = True
 

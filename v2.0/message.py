@@ -5,7 +5,7 @@ time: 2020-05-29
 author: coder_sakura
 """
 
-VERSION = "v2.1.6"
+VERSION = "v2.1.7"
 # ================================================
 TEMP_MSG = {
 	"VERSION_INFO": "==========PixiC-{}==========".format(VERSION),
@@ -44,7 +44,7 @@ TEMP_MSG = {
 	# BM
 	"BOOKMARK_PAGE_ERROR_INFO": "{}:获取收藏出错: 第{}-{}张失败",
 	"BOOKMARK_PAGE_EMPTY_INFO": "{}:当前收藏: 第{}-{}张为空",
-	"BOOKMARK_NOW_INFO": "{}:当前收藏:第{}-{}张获取成功,共{}张可用",
+	"BOOKMARK_NOW_INFO": "Pixiv收藏作品第{}-{}张获取成功,共{}张可用",
 	"UPDATE_INFO": "{}:进行更新",
 	"UPDATE_CANLE_INFO": "{}:暂不更新",
 	"UPDATE_CHECK_ERROR_INFO": "{}:检查更新出错!",
@@ -59,21 +59,26 @@ TEMP_MSG = {
 	"NO_AUTH" : "没有权限",
 
 	# 线程函数通用
-	"ILLUST_NETWORK_ERROR_INFO": "{}:{}请求错误,{}",
-	"ILLUST_EMPTY_INFO": "{}:该作品{}已被删除,或作品ID不存在",
+	"ILLUST_NETWORK_ERROR_INFO": "{}:PID:<{}>请求错误,{}",
+	"ILLUST_EMPTY_INFO": "{}:该作品{}已被删除,或作品ID不存在,或被限制访问",
 	"INSERT_SUCCESS_INFO": "{}:插入{}成功",
 	"INSERT_FAIL_INFO": "{}:插入{}失败",
 	"DELELE_ILLUST_SUCCESS_INFO": "{}:已删除{}作品记录 | pixiv上不存在该作品/作品已删除/作品已设为私密",
 	"DELELE_ILLUST_FAIL_INFO": "{}:删除{}作品记录失败 | pixiv上不存在该作品/作品已删除/作品已设为私密",
 
 	# DM
-	"DM_NETWORK_ERROR_INFO": "{}:代理无效/网络错误,url:{} | exception:{}",
+	"DM_NETWORK_ERROR_INFO": "{}:代理无效/网络错误,options:{} | exception:{}",
+	"DM_RETRY_INFO": "尝试重新请求:{}",
 	"DM_DOWNLOAD_SUCCESS_INFO": "{}:{}下载成功!大小:{}",
 	"UNLOGIN_TEXT": "出现了未知错误",
 	"UNLOGIN_INFO": "{}:请先在Chrome上登录Pixiv账号",
 	"UL_TEXT": "UNLOGIN",
 	"PID_DELETED_TEXT": "该作品已被删除, 或作品ID不存在。",
 	"PID_ERROR_TEXT": "无法找到您所请求的页面",
+	"PID_UNAUTH_ACCESS": "作者已设置为私密,尚无权限浏览该作品",
+	"LIMIT_TEXT": "出现错误。请稍后再试。",
+	"LIMIT_TEXT_RESP": "请求太快被限制访问,休眠一段时间后恢复访问<{}>",
+	"JSON_DECODE_ERR": "Json数据解析失败 - {}",
 
 	# API
 	# 查询不到数据

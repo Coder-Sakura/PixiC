@@ -44,8 +44,16 @@ class Downloader:
 		}
 		# 作品链接
 		self.artworks_url = "https://www.pixiv.net/artworks/{}"
-		# 作品数据
-		self.ajax_illust = "https://www.pixiv.net/ajax/illust/{}"
+		# 作品数据 8.16
+		# self.ajax_illust = "https://www.pixiv.net/ajax/illust/{}"
+		self.ajax_illust = "https://www.pixiv.net/touch/ajax/illust/details?illust_id={}"
+		self.ajax_headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; WOW64; rv:52.0) Gecko/20100101 Firefox/52.0",
+            "Accept": "*/*",
+            "Accept-Language": "zh-CN,zh;q=0.8,en-US;q=0.5,en;q=0.3",
+            "Accept-Encoding": "",
+            "Connection": "keep-alive",
+        }
 		# 动图的zip包下载地址
 		self.zip_url = "https://www.pixiv.net/ajax/illust/{}/ugoira_meta"
 		# 多图-每张图的url组
@@ -86,9 +94,11 @@ class Downloader:
 			return response
 		except  Exception as e:
 			if retry_num > 0:
+				logger.warning(TEMP_MSG["DM_RETRY_INFO"].format(options["url"]))
+				time.sleep(1)
 				return self.baseRequest(options,data,params,retry_num-1)
 			else:
-				logger.warning(TEMP_MSG["DM_NETWORK_ERROR_INFO"].format(self.class_name,options["url"],e))
+				logger.warning(TEMP_MSG["DM_NETWORK_ERROR_INFO"].format(self.class_name,options,e))
 				return None
 
 	def get_illust_info(self, pid, extra="pixiv"):
@@ -104,7 +114,9 @@ class Downloader:
 		单图 https://www.pixiv.net/ajax/illust/77719030
 		'''
 		info_url = self.ajax_illust.format(pid)
-		r = self.baseRequest(options={"url":info_url})
+		# r = self.baseRequest(options={"url":info_url})
+		# 8.16 issues #14
+		r = self.baseRequest(options={"url":info_url, "headers":self.ajax_headers})
 		if r == None:
 			return None
 
@@ -112,6 +124,7 @@ class Downloader:
 		try:
 			resp = json.loads(r.text)
 		except json.decoder.JSONDecodeError as e:
+			logger.warning(TEMP_MSG["JSON_DECODE_ERR"].format(r.text))
 			return None
 
 		# 未登录
@@ -124,29 +137,38 @@ class Downloader:
 			# 判断其他状态
 			# 作品被删除--该作品已被删除，或作品ID不存在。
 			if resp["message"] == TEMP_MSG["PID_DELETED_TEXT"]:
+				logger.warning(f'{TEMP_MSG["PID_DELETED_TEXT"]} - {pid}')
 				return TEMP_MSG["PID_DELETED_TEXT"]
+
 			# pid错误--无法找到您所请求的页面
 			elif resp["message"] ==  TEMP_MSG["PID_ERROR_TEXT"]:
+				logger.warning(f'{TEMP_MSG["PID_ERROR_TEXT"]} - {pid}')
 				return TEMP_MSG["PID_ERROR_TEXT"]
-			else:
-				return None
+
+			# 作品被设为私密--尚无权限浏览该作品
+			elif resp["message"] ==  TEMP_MSG["PID_UNAUTH_ACCESS"]:
+				logger.warning(f'{TEMP_MSG["PID_UNAUTH_ACCESS"]} - {pid}')
+				return TEMP_MSG["PID_UNAUTH_ACCESS"]
+				
+			elif resp["message"] ==  TEMP_MSG["LIMIT_TEXT"]:
+				return TEMP_MSG["LIMIT_TEXT"]
 
 		# 作品数据
 		info = resp["body"]
 		# uid
-		uid = int(info["userId"])
+		uid = int(info["author_details"]["user_id"])
 		# userName
-		userName = info["userName"]
+		userName = info["author_details"]["user_name"]
 		# artworks_url
 		purl = self.artworks_url.format(pid)
 		# title
-		title = info.get("illustTitle","")
+		title = info["illust_details"]["alt"]
 		# tag形如<作者名称>、魅惑の谷間/魅惑的乳沟、下乳/南半「球」、青雲映す碧波
 		try:
 			tag_list = []
-			for i in info["tags"]["tags"]:
+			for i in info["illust_details"]["display_tags"]:
 				if "translation" in i.keys():
-					r = "{}/{}".format(i["tag"],i["translation"]["en"])
+					r = "{}/{}".format(i["tag"],i["translation"])
 				else:
 					r = i["tag"]
 				if r != "":
@@ -158,23 +180,30 @@ class Downloader:
 			# 添加作者名称
 			tag  = "{}、".format(userName) + tag
 		# 作品类型
-		illustType = info["illustType"]
+		illustType = int(info["illust_details"]["type"])
 		# 页数
-		pageCount = info["pageCount"]
+		pageCount = int(info["illust_details"]["page_count"])
 		# 是否为R-18
 		is_r18 = [1 if 'R-18' in tag else 0][0]
 		# 浏览人数
-		viewCount = info["viewCount"]
+		viewCount = int(info["illust_details"]["rating_view"])
 		# 收藏人数
-		bookmarkCount = info["bookmarkCount"]
+		bookmarkCount = int(info["illust_details"]["bookmark_user_total"])
 		# 赞/喜欢人数
-		likeCount = info["likeCount"]
-		# 评论人数
-		commentCount = info["commentCount"]
+		likeCount = int(info["illust_details"]["rating_count"])
+		# 评论人数 新接口无该字段
+		commentCount = 0
 		# 图片链接组
-		urls = str(info["urls"])
+		urls = {
+			"mini": info["illust_details"]["url_ss"],
+			"thumb": info["illust_details"]["url_s"],
+			"small": info["illust_details"]["url_placeholder"].replace("100x100", "540x540_70"),
+			"regular": info["illust_details"]["url"],
+			"original": info["illust_details"]["url_big"]
+		}
+		urls = str(urls)
 		# 原图链接
-		original = info["urls"]["original"]
+		original = info["illust_details"]["url_big"]
 		# score&illust_level
 		score = round((bookmarkCount/viewCount),3)
 		illust_level = self.get_illust_level(score,bookmarkCount)
@@ -217,7 +246,7 @@ class Downloader:
 			path = self.file_manager.mkdir_illusts(user_path,pid)
 			data["path"] = path
 			# 下载器启动
-			# logger.info("id:{} 作品正在下载".format(pid))
+			logger.info("id:{} 作品正在下载".format(pid))
 			self.filter(data)
 		else:
 			path = "None"

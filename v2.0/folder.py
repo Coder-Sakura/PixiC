@@ -1,6 +1,7 @@
 # coding=utf8
 import os
 import re
+import glob
 
 from config import ROOT_PATH,BOOKMARK_PATH
 
@@ -63,5 +64,26 @@ class Folder(object):
 			return illusts_id_path
 		else:
 			return illusts_id_path
+		
+	def search_isExistsPid(self,root,extra="c",*args):
+		'''
+		查找pid是否已下载
+		:parmas root 画师路径/收藏作品主目录
+		:parmas pid 作品id
+		:parmas extra 处理不同模块
+		:return True or False 已存在/不存在
+		'''
+		if extra == "c":
+			uid = args[0]
+			pid = args[1]
+			flag = glob.glob(os.path.join(root, f"{uid}**/{pid}/{pid}**.**"))
+		elif extra == "b":
+			pid = args[0]
+			flag = glob.glob(os.path.join(root, f"{pid}/{pid}**.**"))
+
+		if flag:
+			return True
+		return False
+
 
 file_manager = Folder()
