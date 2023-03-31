@@ -208,10 +208,10 @@ class db_client(object):
 		sql = '''INSERT INTO {} '''.format(table) + '''(uid,userName,pid,purl,title,tag,pageCount,\
 						illustType,is_r18,score,illust_level,viewCount,bookmarkCount,likeCount,\
 						commentCount,urls,original,path) VALUES(%s,%s,%s,%s,\
-						%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)'''
+						%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)'''
 		data = (
 			u["uid"],u["userName"],u["pid"],u["purl"],u["title"],u["tag"],
-			u["pageCount"],u["illustType"],u["is_r18"],u["score"],u["illust_level"],
+			u["pageCount"],u["illustType"],u["is_r18"],u["is_ai"],u["score"],u["illust_level"],
 			u["viewCount"],u["bookmarkCount"],u["likeCount"],u["commentCount"],
 			u["urls"],u["original"],u["path"]
 				)

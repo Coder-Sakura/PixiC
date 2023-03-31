@@ -185,6 +185,8 @@ class Downloader:
 		pageCount = int(info["illust_details"]["page_count"])
 		# 是否为R-18
 		is_r18 = [1 if 'R-18' in tag else 0][0]
+		# 是否为AI作品 0为人类;2为AI
+		is_ai = int(info["illust_details"]["ai_type"])
 		# 浏览人数
 		viewCount = int(info["illust_details"]["rating_view"])
 		# 收藏人数
@@ -219,6 +221,7 @@ class Downloader:
 			"pageCount":pageCount,
 			"illustType":illustType,
 			"is_r18":is_r18,
+			"is_ai":is_ai,
 			"score":score,
 			"illust_level":illust_level,
 			"viewCount":viewCount,
