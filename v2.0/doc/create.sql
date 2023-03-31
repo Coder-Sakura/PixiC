@@ -14,6 +14,7 @@ CREATE TABLE pixiv(
   pageCount int(3) NOT NULL,
   illustType tinyint(3) NOT NULL,
   is_r18 tinyint(1) NOT NULL,
+  is_ai tinyint(1) NOT NULL,
   score float(5,3) NOT NULL,
   illust_level varchar(20) NOT NULL,
   viewCount int NOT NULL,
