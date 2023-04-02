@@ -234,18 +234,18 @@ class db_client(object):
 		:params u:作品数据
 		:parmas table: 操作数据表
 		:return: True/False
-		更新11个字段 tag,pageCount,illustType,is_r18,score,illust_level,
+		更新12个字段 tag,pageCount,illustType,is_r18,is_ai,score,illust_level,
 				viewCount,bookmarkCount,likeCount,commentCount,path
 		"""
 		conn,cur = self.get_conn()
 
 		# 更新sql
 		sql = """UPDATE {} """.format(table) + """SET tag=%s,pageCount=%s,\
-				illustType=%s,is_r18=%s,score=%s,illust_level=%s,viewCount=%s,\
+				illustType=%s,is_r18=%s,is_ai=%s,score=%s,illust_level=%s,viewCount=%s,\
 				bookmarkCount=%s,likeCount=%s,commentCount=%s,path=%s WHERE pid=%s"""
 		# 更新数据
 		data = (
-			u["tag"],u["pageCount"],u["illustType"],u["is_r18"],u["score"],u["illust_level"],
+			u["tag"],u["pageCount"],u["illustType"],u["is_r18"],u["is_ai"],u["score"],u["illust_level"],
 			u["viewCount"],u["bookmarkCount"],u["likeCount"],u["commentCount"],u["path"],u["pid"]
 		)
 		try:
