@@ -206,7 +206,7 @@ class db_client(object):
 		conn,cur = self.get_conn()
 
 		sql = '''INSERT INTO {} '''.format(table) + '''(uid,userName,pid,purl,title,tag,pageCount,\
-						illustType,is_r18,score,illust_level,viewCount,bookmarkCount,likeCount,\
+						illustType,is_r18,is_ai,score,illust_level,viewCount,bookmarkCount,likeCount,\
 						commentCount,urls,original,path) VALUES(%s,%s,%s,%s,\
 						%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)'''
 		data = (

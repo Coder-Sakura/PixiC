@@ -5,7 +5,7 @@ time: 2020-05-29
 author: coder_sakura
 """
 
-VERSION = "v2.1.8"
+VERSION = "v2.1.9"
 # ================================================
 TEMP_MSG = {
 	"VERSION_INFO": "==========PixiC-{}==========".format(VERSION),
