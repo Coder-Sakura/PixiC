@@ -146,9 +146,10 @@ class Downloader:
 				return TEMP_MSG["PID_ERROR_TEXT"]
 
 			# 作品被设为私密--尚无权限浏览该作品
-			elif resp["message"] ==  TEMP_MSG["PID_UNAUTH_ACCESS"]:
-				logger.warning(f'{TEMP_MSG["PID_UNAUTH_ACCESS"]} - {pid}')
-				return TEMP_MSG["PID_UNAUTH_ACCESS"]
+			elif resp["message"] == TEMP_MSG["PID_UNAUTH_ACCESS"] or\
+				resp["message"] == TEMP_MSG["PID_UNAUTH_ACCESS_2"]:
+				logger.warning(f'{TEMP_MSG["PID_UNAUTH_ACCESS_2"]} - {pid}')
+				return TEMP_MSG["PID_UNAUTH_ACCESS_2"]
 				
 			elif resp["message"] ==  TEMP_MSG["LIMIT_TEXT"]:
 				return TEMP_MSG["LIMIT_TEXT"]

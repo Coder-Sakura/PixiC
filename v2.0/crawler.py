@@ -227,7 +227,8 @@ class Crawler(object):
 			else:
 				# pid不存在/已删除/已设为私密/无权限访问
 				if info == TEMP_MSG["PID_DELETED_TEXT"] or\
-					info == TEMP_MSG["PID_UNAUTH_ACCESS"]:
+					info == TEMP_MSG["PID_UNAUTH_ACCESS"] or\
+					info == TEMP_MSG["PID_UNAUTH_ACCESS_2"]:
 					result = self.db.delete_user_illust(key="pid",value=pid)
 					# 删除成功
 					if result:

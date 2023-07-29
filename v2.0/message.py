@@ -5,7 +5,7 @@ time: 2020-05-29
 author: coder_sakura
 """
 
-VERSION = "v2.1.10"
+VERSION = "v2.1.11"
 # ================================================
 TEMP_MSG = {
 	"VERSION_INFO": "==========PixiC-{}==========".format(VERSION),
@@ -76,6 +76,7 @@ TEMP_MSG = {
 	"PID_DELETED_TEXT": "该作品已被删除, 或作品ID不存在。",
 	"PID_ERROR_TEXT": "无法找到您所请求的页面",
 	"PID_UNAUTH_ACCESS": "作者已设置为私密,尚无权限浏览该作品",
+	"PID_UNAUTH_ACCESS_2": "尚无权限浏览该作品",
 	"LIMIT_TEXT": "出现错误。请稍后再试。",
 	"LIMIT_TEXT_RESP": "请求太快被限制访问,休眠一段时间后恢复访问<{}>",
 	"JSON_DECODE_ERR": "Json数据解析失败 - {}",
