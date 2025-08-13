@@ -6,3 +6,4 @@ PyMySQL==0.9.3
 requests==2.23.0
 selenium==3.141.0
 loguru==0.5.3
+Pillow

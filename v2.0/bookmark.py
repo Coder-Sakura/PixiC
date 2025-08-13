@@ -9,8 +9,7 @@ import json
 import time
 import random
 
-from config import BOOKMARK_HIDE_ENABLE,SKIP_ISEXISTS_ILLUST,BOOKMARK_PATH, \
-    SLOW_CRAWL_ENABLED, SLOW_CRAWL_MIN_DELAY, SLOW_CRAWL_MAX_DELAY
+from config import BOOKMARK_HIDE_ENABLE,SKIP_ISEXISTS_ILLUST,SKIP_DB_EXISTS_ILLUST,BOOKMARK_PATH
 from downer import Downloader
 from log_record import logger
 from message import TEMP_MSG
@@ -18,6 +17,7 @@ from thread_pool import ThreadPool,callback
 from ptimer import Timer
 # TODO
 from tag import TAG_FLAG_BOOKMARK
+from checker import run_startup_check
 
 
 class Bookmark(object):
@@ -138,6 +138,16 @@ class Bookmark(object):
 		pid = args[0]
 		info = None
 
+		# 基于数据库的提前跳过，避免网络与文件系统检测
+		if hasattr(self.db, "pool") and SKIP_DB_EXISTS_ILLUST:
+			try:
+				exists, _ = self.db.check_illust(pid, table="bookmark")
+				if exists:
+					logger.info(f"SKIP_DB_EXISTS_ILLUST - {pid}")
+					return info
+			except Exception:
+				pass
+
 		# 跳过已下载插画的请求
 		if SKIP_ISEXISTS_ILLUST and self.file_manager.search_isExistsPid(
 			BOOKMARK_PATH,"b",*(pid,)):
@@ -204,6 +214,12 @@ class Bookmark(object):
 
 	@logger.catch
 	def run(self):
+		# 启动一致性检查（最近 20 条）
+		try:
+			run_startup_check(self.Downloader)
+		except Exception as e:
+			logger.warning(f"启动一致性检查失败: {e}")
+
 		# TDOD TAG COUNT开始工作
 		TAG_FLAG_BOOKMARK = False
 		logger.info(TEMP_MSG["BEGIN_INFO"].format(self.class_name))
@@ -251,11 +267,7 @@ class Bookmark(object):
 						pool.put(self.thread_by_illust,(pid,),callback)
 
 					offset += self.bookmark_page_offset
-					# 爬取限速（下载不受影响）
-					if SLOW_CRAWL_ENABLED:
-						time.sleep(random.uniform(SLOW_CRAWL_MIN_DELAY, SLOW_CRAWL_MAX_DELAY))
-					else:
-						time.sleep(1)
+					# 取消固定/随机等待，统一交由 Downloader 自适应限速（仅对线上接口生效）
 		except Exception as e:
 			logger.warning("Exception {}".format(e))
 		finally:

@@ -9,13 +9,14 @@ import time
 import random
 import re
 
-from config import SKIP_ISEXISTS_ILLUST,ROOT_PATH, SLOW_CRAWL_ENABLED, SLOW_CRAWL_MIN_DELAY, SLOW_CRAWL_MAX_DELAY
+from config import SKIP_ISEXISTS_ILLUST, SKIP_DB_EXISTS_ILLUST, ROOT_PATH
 from downer import Downloader
 from log_record import logger
 from message import TEMP_MSG
 from thread_pool import ThreadPool,callback
 from tag import TAG_FLAG_USER
 from ptimer import Timer
+from checker import run_startup_check
 
 
 class Crawler(object):
@@ -178,6 +179,16 @@ class Crawler(object):
 		uid = args[1]
 		info = None
 		
+		# 基于数据库的提前跳过，避免网络与文件系统检测
+		if hasattr(self.db, "pool") and SKIP_DB_EXISTS_ILLUST:
+			try:
+				exists, _ = self.db.check_illust(pid)
+				if exists:
+					logger.info(f"SKIP_DB_EXISTS_ILLUST - {uid} - {pid}")
+					return info
+			except Exception:
+				pass
+
 		# 跳过已下载插画的请求
 		if SKIP_ISEXISTS_ILLUST and self.file_manager.search_isExistsPid(
 			ROOT_PATH,"c",*(uid,pid,)):
@@ -244,6 +255,12 @@ class Crawler(object):
 
 	@logger.catch
 	def run(self):
+		# 启动一致性检查（最近 20 条）
+		try:
+			run_startup_check(self.Downloader)
+		except Exception as e:
+			logger.warning(f"启动一致性检查失败: {e}")
+
 		# 开始工作
 		TAG_FLAG_USER = False
 		logger.info(TEMP_MSG["BEGIN_INFO"].format(self.class_name))
@@ -289,11 +306,7 @@ class Crawler(object):
 					for pid in all_illust:
 						pool.put(self.thread_by_illust,(pid,u["uid"],),callback)
 
-					# 爬取限速（下载不受影响）
-					if SLOW_CRAWL_ENABLED:
-						time.sleep(random.uniform(SLOW_CRAWL_MIN_DELAY, SLOW_CRAWL_MAX_DELAY))
-					else:
-						time.sleep(5)
+					# 取消固定/随机等待，统一交由 Downloader 自适应限速（仅对线上接口生效）
 				# 无作品更新
 				else:
 					logger.info(TEMP_MSG["NOW_USER_INFO"].format(self.class_name,position,u["userName"],u["uid"],len(all_illust)))

@@ -17,12 +17,20 @@ import urllib3
 # 强制取消警告
 urllib3.disable_warnings(InsecureRequestWarning)
 
-from config import USERS_LIMIT,BOOKMARK_LIMIT, SLOW_CRAWL_ENABLED, SLOW_CRAWL_MIN_DELAY, SLOW_CRAWL_MAX_DELAY
+from config import (
+    USERS_LIMIT,
+    BOOKMARK_LIMIT,
+    ADAPTIVE_LIMIT_ENABLED,
+    ADAPTIVE_DELAY_MAX,
+    ADAPTIVE_DELAY_INCREASE,
+    ADAPTIVE_DELAY_DECAY_RATIO,
+)
 from db import db_client
 from folder import file_manager
 from log_record import logger
 from login import client
 from message import TEMP_MSG
+from image_check import IsValidImage
 
 
 # class Down(object):
@@ -61,6 +69,12 @@ class Downloader:
 
 		# print("user_id",self.client.user_id)
 
+		# 自适应限速：仅对信息类接口（ajax/touch）生效；下载不受限
+		self._adaptive_delay = 0.0			# 当前等待（秒）
+		self._adaptive_delay_max = ADAPTIVE_DELAY_MAX
+		self._adaptive_increase = ADAPTIVE_DELAY_INCREASE
+		self._adaptive_decay_ratio = ADAPTIVE_DELAY_DECAY_RATIO
+
 	def calculate_host(self, url):
 		try:
 			return url.split("//")[-1].split("/")[0]
@@ -89,13 +103,11 @@ class Downloader:
 			base_headers["Host"] = host
 
 		try:
-			# 慢速爬取：仅对页面/信息类请求限速（不影响图片/文件下载）
-			if SLOW_CRAWL_ENABLED:
-				_url = options.get("url", "")
-				# 判断为 ajax/touch 信息接口
-				if any(key in _url for key in ["/ajax/", "/touch/ajax/"]):
-					delay = random.uniform(SLOW_CRAWL_MIN_DELAY, SLOW_CRAWL_MAX_DELAY)
-					time.sleep(delay)
+			# 自适应限速：仅对信息类接口生效
+			_url = options.get("url", "")
+			if ADAPTIVE_LIMIT_ENABLED and any(key in _url for key in ["/ajax/", "/touch/ajax/"]):
+				if self._adaptive_delay > 0:
+					time.sleep(self._adaptive_delay)
 			# if options["method"].lower() == "get":
 			# 网络请求函数get、post请求,暂时不判断method字段,待后续更新
 			# logger.debug("cookie_list {}".format(len(self.cookie_list)))
@@ -108,8 +120,17 @@ class Downloader:
 	    			verify = False,
 	    			timeout = 10,
 				)
-			# 非 200 视为失败，返回 None，避免将错误页面当作文件保存
+			# 非 200 情况处理
 			if getattr(response, "status_code", 0) != 200:
+				# 若是信息接口 404，多半为作品被删除/私密，返回可解析的错误 JSON，避免误判为网络失败
+				if response.status_code == 404 and any(key in _url for key in ["/ajax/illust/", "/touch/ajax/illust/details"]):
+					class _FakeResponse:
+						pass
+					fake = _FakeResponse()
+					fake.status_code = 404
+					fake.text = json.dumps({"error": True, "message": TEMP_MSG["PID_DELETED_TEXT"]})
+					return fake
+				# 其他情况按失败处理
 				logger.warning(f"请求失败[{response.status_code}] - {options['url']}")
 				return None
 			return response
@@ -146,6 +167,8 @@ class Downloader:
 			resp = json.loads(r.text)
 		except json.decoder.JSONDecodeError as e:
 			logger.warning(TEMP_MSG["JSON_DECODE_ERR"].format(r.text))
+			# 解析失败视为异常，轻微抬升延迟
+			self._adaptive_delay = min(self._adaptive_delay_max, self._adaptive_delay + self._adaptive_increase / 2)
 			return None
 
 		# 未登录
@@ -173,9 +196,16 @@ class Downloader:
 				return TEMP_MSG["PID_UNAUTH_ACCESS_2"]
 				
 			elif resp["message"] ==  TEMP_MSG["LIMIT_TEXT"]:
+				# 命中限流：抬升自适应延迟
+				self._adaptive_delay = min(self._adaptive_delay_max, self._adaptive_delay + self._adaptive_increase)
 				return TEMP_MSG["LIMIT_TEXT"]
+			# 兜底：常见 404/错误页的“无法找到您所请求的页面”
+			elif TEMP_MSG["PID_ERROR_TEXT"] in str(resp.get("message", "")):
+				return TEMP_MSG["PID_ERROR_TEXT"]
 
 		# 作品数据
+		# 请求成功：衰减自适应延迟
+		self._adaptive_delay *= self._adaptive_decay_ratio
 		info = resp["body"]
 		# uid
 		uid = int(info["author_details"]["user_id"])
@@ -314,7 +344,7 @@ class Downloader:
 		name = "{}.{}".format(data["pid"],original.split(".")[-1])
 		illustPath = os.path.join(path_,name)
 
-		if os.path.exists(illustPath) == True and os.path.getsize(illustPath) > 1000:
+		if os.path.exists(illustPath) == True and os.path.getsize(illustPath) > 1000 and IsValidImage(illustPath):
 			# 作品存在且大于1000字节,为了避免58字节错误页面和其他错误页面
 			# logger.info("{}已存在".format(name))
 			pass
@@ -348,7 +378,7 @@ class Downloader:
 			# 78997178-0.png
 			name = new_original.split("/")[-1].replace("_p","-")
 			illustPath = os.path.join(path_,name)
-			if os.path.exists(illustPath) == True and os.path.getsize(illustPath) > 1000:
+			if os.path.exists(illustPath) == True and os.path.getsize(illustPath) > 1000 and IsValidImage(illustPath):
 				# logger.debug("{}已存在".format(name))
 				pass
 			else:

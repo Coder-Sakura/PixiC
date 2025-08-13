@@ -289,6 +289,23 @@ class db_client(object):
 			cur.close()
 			conn.close()
 
+	def select_latest_records(self, table="pixiv", limit=20):
+		"""
+		获取指定表按自增 id 倒序的最近 N 条记录，包含 pid/path/pageCount/illustType/uid/userName。
+		"""
+		conn,cur = self.get_conn()
+		sql = f"""SELECT pid,path,pageCount,illustType,uid,userName FROM {table} ORDER BY id DESC LIMIT %s"""
+		try:
+			cur.execute(sql, (int(limit),))
+			r = cur.fetchall()
+			return r or []
+		except Exception as e:
+			logger.warning(f"<Exception> - {e}")
+			return []
+		finally:
+			cur.close()
+			conn.close()
+
 	def select_user(self, start_id, limit=100, table="pxusers"):
 		"""
 		获取关注列表用户的数据库信息
