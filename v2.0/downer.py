@@ -12,11 +12,12 @@ import random
 import imageio
 import zipfile
 import requests
+from urllib3.exceptions import InsecureRequestWarning
+import urllib3
 # 强制取消警告
-from requests.packages.urllib3.exceptions import InsecureRequestWarning
-requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+urllib3.disable_warnings(InsecureRequestWarning)
 
-from config import USERS_LIMIT,BOOKMARK_LIMIT
+from config import USERS_LIMIT,BOOKMARK_LIMIT, SLOW_CRAWL_ENABLED, SLOW_CRAWL_MIN_DELAY, SLOW_CRAWL_MAX_DELAY
 from db import db_client
 from folder import file_manager
 from log_record import logger
@@ -35,7 +36,6 @@ class Downloader:
 		self.db = db_client()
 		self.headers = {
 			# "Connection": "keep-alive",
-			"Host": "www.pixiv.net",
 			"referer": "https://www.pixiv.net/",
 			"origin": "https://accounts.pixiv.net",
 			"accept-language": "zh-CN,zh;q=0.9",	# 返回translation,中文翻译的标签组
@@ -61,6 +61,12 @@ class Downloader:
 
 		# print("user_id",self.client.user_id)
 
+	def calculate_host(self, url):
+		try:
+			return url.split("//")[-1].split("/")[0]
+		except Exception:
+			return ""
+
 	def baseRequest(self, options, data=None, params=None, retry_num=5):
 		'''
 	    :params options: 请求参数,暂时只用到headers和url
@@ -76,9 +82,20 @@ class Downloader:
 	    options ={"url":"origin_url","headers":demo_headers}
 	    baseRequest(options=options)
 	    '''
-		base_headers = [options["headers"] if "headers" in options.keys() else self.headers][0]
+		base_headers = dict(options["headers"]) if "headers" in options.keys() else dict(self.headers)
+		# 动态设置 Host，避免 421
+		host = self.calculate_host(options.get("url", ""))
+		if host:
+			base_headers["Host"] = host
 
 		try:
+			# 慢速爬取：仅对页面/信息类请求限速（不影响图片/文件下载）
+			if SLOW_CRAWL_ENABLED:
+				_url = options.get("url", "")
+				# 判断为 ajax/touch 信息接口
+				if any(key in _url for key in ["/ajax/", "/touch/ajax/"]):
+					delay = random.uniform(SLOW_CRAWL_MIN_DELAY, SLOW_CRAWL_MAX_DELAY)
+					time.sleep(delay)
 			# if options["method"].lower() == "get":
 			# 网络请求函数get、post请求,暂时不判断method字段,待后续更新
 			# logger.debug("cookie_list {}".format(len(self.cookie_list)))
@@ -91,6 +108,10 @@ class Downloader:
 	    			verify = False,
 	    			timeout = 10,
 				)
+			# 非 200 视为失败，返回 None，避免将错误页面当作文件保存
+			if getattr(response, "status_code", 0) != 200:
+				logger.warning(f"请求失败[{response.status_code}] - {options['url']}")
+				return None
 			return response
 		except  Exception as e:
 			if retry_num > 0:

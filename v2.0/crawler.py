@@ -6,9 +6,10 @@ author: coder_sakura
 """
 import json
 import time
+import random
 import re
 
-from config import SKIP_ISEXISTS_ILLUST,ROOT_PATH
+from config import SKIP_ISEXISTS_ILLUST,ROOT_PATH, SLOW_CRAWL_ENABLED, SLOW_CRAWL_MIN_DELAY, SLOW_CRAWL_MAX_DELAY
 from downer import Downloader
 from log_record import logger
 from message import TEMP_MSG
@@ -288,8 +289,11 @@ class Crawler(object):
 					for pid in all_illust:
 						pool.put(self.thread_by_illust,(pid,u["uid"],),callback)
 
-					# 固定休眠
-					time.sleep(5)
+					# 爬取限速（下载不受影响）
+					if SLOW_CRAWL_ENABLED:
+						time.sleep(random.uniform(SLOW_CRAWL_MIN_DELAY, SLOW_CRAWL_MAX_DELAY))
+					else:
+						time.sleep(5)
 				# 无作品更新
 				else:
 					logger.info(TEMP_MSG["NOW_USER_INFO"].format(self.class_name,position,u["userName"],u["uid"],len(all_illust)))

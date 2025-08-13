@@ -7,8 +7,10 @@ author: coder_sakura
 # import math
 import json
 import time
+import random
 
-from config import BOOKMARK_HIDE_ENABLE,SKIP_ISEXISTS_ILLUST,BOOKMARK_PATH
+from config import BOOKMARK_HIDE_ENABLE,SKIP_ISEXISTS_ILLUST,BOOKMARK_PATH, \
+    SLOW_CRAWL_ENABLED, SLOW_CRAWL_MIN_DELAY, SLOW_CRAWL_MAX_DELAY
 from downer import Downloader
 from log_record import logger
 from message import TEMP_MSG
@@ -249,8 +251,11 @@ class Bookmark(object):
 						pool.put(self.thread_by_illust,(pid,),callback)
 
 					offset += self.bookmark_page_offset
-					# 固定休眠
-					time.sleep(1)
+					# 爬取限速（下载不受影响）
+					if SLOW_CRAWL_ENABLED:
+						time.sleep(random.uniform(SLOW_CRAWL_MIN_DELAY, SLOW_CRAWL_MAX_DELAY))
+					else:
+						time.sleep(1)
 		except Exception as e:
 			logger.warning("Exception {}".format(e))
 		finally:
