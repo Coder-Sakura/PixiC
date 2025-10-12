@@ -24,6 +24,7 @@ from config import (
     ADAPTIVE_DELAY_MAX,
     ADAPTIVE_DELAY_INCREASE,
     ADAPTIVE_DELAY_DECAY_RATIO,
+    DOWNLOAD_POST_DELAY_SECONDS,
 )
 from db import db_client
 from folder import file_manager
@@ -354,7 +355,8 @@ class Downloader:
 				return None
 			size = self.downSomething(illustPath,c.content)
 			logger.success(TEMP_MSG["DM_DOWNLOAD_SUCCESS_INFO"].format(self.class_name,name,self.size2Mb(size)))
-			time.sleep(1)
+			if DOWNLOAD_POST_DELAY_SECONDS > 0:
+				time.sleep(DOWNLOAD_POST_DELAY_SECONDS)
 
 	def illustMulti(self, data):
 		"""
@@ -387,7 +389,8 @@ class Downloader:
 					return None
 				size = self.downSomething(illustPath,c.content)
 				logger.success(TEMP_MSG["DM_DOWNLOAD_SUCCESS_INFO"].format(self.class_name,name,self.size2Mb(size)))
-				time.sleep(1)
+				if DOWNLOAD_POST_DELAY_SECONDS > 0:
+					time.sleep(DOWNLOAD_POST_DELAY_SECONDS)
 
 	def illustGif(self, data):
 		"""
