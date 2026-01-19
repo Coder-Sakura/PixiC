@@ -18,13 +18,39 @@ class Folder(object):
 		isExists = os.path.exists(self.bk_path)
 		if not isExists:os.makedirs(self.bk_path)
 
+		# uid 到画师目录的内存索引，避免频繁全盘扫描
+		self.uid_to_user_path = {}
+		self._build_user_index()
+
+	def _build_user_index(self):
+		"""
+		扫描一次根目录，建立 uid -> user_path 的索引。
+		目录命名规则为："{uid}--{userName}"，取 "--" 之前的部分作为 uid。
+		"""
+		try:
+			for folder in os.listdir(self.path):
+				# 只索引形如 uid--name 的目录
+				if "--" in folder:
+					uid_prefix = folder.split('--')[0]
+					if uid_prefix.isdigit():
+						self.uid_to_user_path[uid_prefix] = os.path.join(self.path, folder)
+		except FileNotFoundError:
+			# 根目录尚未创建时忽略
+			pass
+
 	def select_user_path(self, uid, userName):
-		for folder in os.listdir(self.path):
-			if str(uid) == folder.split('--')[0]:
-				user_path = os.path.join(self.path,folder)
-				return user_path
-		else:
-			return self.mkdir_painter({"uid":uid,"userName":userName})
+		uid_str = str(uid)
+		# 优先走内存索引
+		user_path = self.uid_to_user_path.get(uid_str)
+		if user_path and os.path.exists(user_path):
+			return user_path
+		# 索引缺失或目录不存在时，重建一次索引
+		self._build_user_index()
+		user_path = self.uid_to_user_path.get(uid_str)
+		if user_path and os.path.exists(user_path):
+			return user_path
+		# 未找到则创建
+		return self.mkdir_painter({"uid":uid,"userName":userName})
 
 	def mkdir_painter(self, info):
 		'''
@@ -43,10 +69,14 @@ class Folder(object):
 		for folder in os.listdir(self.path):
 			if str(uid) == folder.split('--')[0]:
 				user_path = os.path.join(self.path,folder)
+				# 回填索引
+				self.uid_to_user_path[str(uid)] = user_path
 				return user_path
 
 		user_path = os.path.join(self.path,painter_name)
 		os.makedirs(user_path)
+		# 新建后回填索引
+		self.uid_to_user_path[str(uid)] = user_path
 		return user_path
 
 	def mkdir_illusts(self, user_path,pid):
@@ -74,15 +104,30 @@ class Folder(object):
 		:return True or False 已存在/不存在
 		'''
 		if extra == "c":
-			uid = args[0]
-			pid = args[1]
-			flag = glob.glob(os.path.join(root, f"{uid}**/{pid}/{pid}**.**"))
+			uid = str(args[0])
+			pid = str(args[1])
+			# 通过索引快速定位画师目录，避免全盘 glob
+			user_path = self.uid_to_user_path.get(uid)
+			if not user_path or not os.path.isdir(user_path):
+				# 尝试重建索引后再取一次
+				self._build_user_index()
+				user_path = self.uid_to_user_path.get(uid)
+				if not user_path or not os.path.isdir(user_path):
+					return False
+			illust_dir = os.path.join(user_path, pid)
+			if not os.path.isdir(illust_dir):
+				return False
+			# 仅在该插画目录内局部匹配，提高效率
+			flag = glob.glob(os.path.join(illust_dir, f"{pid}*.*"))
+			return bool(flag)
 		elif extra == "b":
-			pid = args[0]
-			flag = glob.glob(os.path.join(root, f"{pid}/{pid}**.**"))
+			pid = str(args[0])
+			illust_dir = os.path.join(root, pid)
+			if not os.path.isdir(illust_dir):
+				return False
+			flag = glob.glob(os.path.join(illust_dir, f"{pid}*.*"))
+			return bool(flag)
 
-		if flag:
-			return True
 		return False
 
 

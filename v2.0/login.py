@@ -107,7 +107,8 @@ class Login(object):
 		chrome_options.add_argument('user-data-dir='+PRO_DIR)
 
 		try:
-			driver = webdriver.Chrome(chrome_options=chrome_options)
+			# 兼容新版 Selenium：使用 options 参数
+			driver = webdriver.Chrome(options=chrome_options)
 			# selenium.common.exceptions.WebDriverException: 
 			# Message: unknown error: cannot create default profile directory
 			# PRO_DIR错误

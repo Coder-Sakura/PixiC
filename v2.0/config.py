@@ -55,6 +55,11 @@ ORIGI_COOKIE_LIST = []
 # 2.同时也无法更新对应pid在数据库中的记录
 SKIP_ISEXISTS_ILLUST = True
 
+# 基于数据库提前跳过：
+# 1. 若数据库中已存在该 pid 的记录，则不再请求作品信息（不触碰网络/文件系统）
+# 2. 适用于你信任数据库记录已经代表“已下载/已处理”的场景
+SKIP_DB_EXISTS_ILLUST = True
+
 # 关注画师爬虫控制开关
 PIXIV_CRAWLER_ENABLED = False
 
@@ -118,3 +123,13 @@ DB_CHARSET = "utf8mb4"
 # TODO
 DEBUG = False
 # ===============DEBUG===============
+
+
+# =============== 自适应限速（仅信息接口） ===============
+# 启用后，仅针对 /ajax/ 或 /touch/ajax/ 的信息请求进行自适应轻量等待；
+# 下载文件不受影响。未命中限流时延迟会快速衰减为 0。
+ADAPTIVE_LIMIT_ENABLED = True
+ADAPTIVE_DELAY_MAX = 1.0           # 最大延迟（秒）
+ADAPTIVE_DELAY_INCREASE = 0.2      # 命中限流后的递增步长（秒）
+ADAPTIVE_DELAY_DECAY_RATIO = 0.5   # 成功请求后的衰减系数（0-1）
+# =======================================================
