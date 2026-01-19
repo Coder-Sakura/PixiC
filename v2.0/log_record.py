@@ -28,7 +28,7 @@ logger.add(
 )
 # 日志写入
 logger.add( 
-    os.path.join(log_path, "{time}.log"),
+    os.path.join(log_path, "{time:YYYY-MM-DD_HH-mm-ss}.log"),
     encoding="utf-8",
     rotation="00:00",
     enqueue=True,

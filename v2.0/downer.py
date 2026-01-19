@@ -6,6 +6,7 @@ author: coder_sakura
 """
 
 import os
+import re
 import json
 import time
 import random
@@ -13,10 +14,11 @@ import imageio
 import zipfile
 import requests
 # 强制取消警告
-from requests.packages.urllib3.exceptions import InsecureRequestWarning
-requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+from requests.packages import urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-from config import USERS_LIMIT,BOOKMARK_LIMIT
+
+from config import USERS_LIMIT,BOOKMARK_LIMIT,SLOW_MODE
 from db import db_client
 from folder import file_manager
 from log_record import logger
@@ -24,12 +26,18 @@ from login import client
 from message import TEMP_MSG
 
 
+# 慢速/快速模式每次访问后的休眠时间
+SLOW_DELAY = lambda: round(random.uniform(1.5, 1.8), 2) if SLOW_MODE else 0
+# 触发429限制的休眠时间
+LIMIT_DELAY = 180
+
+
 # class Down(object):
 class Downloader:
 	def __init__(self):
 		self.class_name = self.__class__.__name__
 		self.se = requests.session()
-		self.client = client
+		self.client = client		# client.user_id
 		self.cookie_list = client.subprocess_check()
 		self.file_manager = file_manager
 		self.db = db_client()
@@ -42,6 +50,7 @@ class Downloader:
 			"User-Agent": 'Mozilla/5.0 (Windows NT 10.0; WOW64) '
 				'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.87 Safari/537.36',
 		}
+		self.baseURL = "https://www.pixiv.net"
 		# 作品链接
 		self.artworks_url = "https://www.pixiv.net/artworks/{}"
 		# 作品数据 8.16
@@ -59,7 +68,13 @@ class Downloader:
 		# 多图-每张图的url组
 		self.multi_url = "https://www.pixiv.net/ajax/illust/{}/pages"
 
-		# print("user_id",self.client.user_id)
+	def calculate_host(self, url):
+		"""
+		计算host,用于获取cookie
+		:params url: 需要获取cookie的url
+		:return: host
+		"""
+		return url.split("//")[-1].split("/")[0]
 
 	def baseRequest(self, options, data=None, params=None, retry_num=5):
 		'''
@@ -69,37 +84,56 @@ class Downloader:
 	    :params retry_num: 重试次数
 	    :return: response对象/False
 
-	    列表推导式作用在于: 优先使用options中的headers,否则使用self.headers
-	    比如:添加referer,referer需要是上一个页面的url,则可以自定义请求头
+	    列表推导式优先使用options的headers;如:添加referer
 	    demo_headers = headers.copy()
 	    demo_headers['referer']  = 'www.example.com'
-	    options ={"url":"origin_url","headers":demo_headers}
-	    baseRequest(options=options)
+	    baseRequest(options={"url":"origin_url","headers":demo_headers})
 	    '''
 		base_headers = [options["headers"] if "headers" in options.keys() else self.headers][0]
+		host = self.calculate_host(options["url"])
+		base_headers["Host"] = host
+		method = [options["method"] if "method" in options.keys() else "get"][0]
 
 		try:
-			# if options["method"].lower() == "get":
-			# 网络请求函数get、post请求,暂时不判断method字段,待后续更新
-			# logger.debug("cookie_list {}".format(len(self.cookie_list)))
-			response = self.se.get(
-	    			options["url"],
-	    			data = data,
-	    			params = params,
-	    			cookies = random.choice(self.cookie_list),
-	    			headers = base_headers,
-	    			verify = False,
-	    			timeout = 10,
-				)
-			return response
-		except  Exception as e:
+			if method.lower() == 'get':
+				response = self.se.get(
+						options["url"],
+						data = data,
+						params = params,
+						cookies = random.choice(self.cookie_list),
+						headers = base_headers,
+						verify = False,
+						timeout = 10,
+					)
+			elif method.lower() == 'post':
+				response = self.se.post(
+						options["url"],
+						data = data,
+						params = params,
+						cookies = random.choice(self.cookie_list),
+						headers = base_headers,
+						verify = False,
+						timeout = 10,
+					)
+		except Exception as e:
 			if retry_num > 0:
 				logger.warning(TEMP_MSG["DM_RETRY_INFO"].format(options["url"]))
-				time.sleep(1)
+				time.sleep(SLOW_DELAY())
 				return self.baseRequest(options,data,params,retry_num-1)
 			else:
 				logger.warning(TEMP_MSG["DM_NETWORK_ERROR_INFO"].format(self.class_name,options,e))
 				return None
+		else:
+			# 处理429流控情况
+			if response.status_code == 429:
+				logger.warning(TEMP_MSG["LIMIT_TEXT_RESP"])
+				logger.debug(options["url"])
+				logger.debug(response.text)
+				time.sleep(LIMIT_DELAY)
+				return self.baseRequest(options,data,params,5)
+			else:
+				time.sleep(SLOW_DELAY())
+				return response
 
 	def get_illust_info(self, pid, extra="pixiv"):
 		'''
@@ -131,7 +165,7 @@ class Downloader:
 		if resp["message"] == TEMP_MSG["UNLOGIN_TEXT"]:
 			logger.warning(TEMP_MSG["UNLOGIN_INFO"].format(self.class_name))
 			return None
-
+		
 		# 出错则不更新不下载;
 		if resp["error"] == True:
 			# 判断其他状态
@@ -141,7 +175,7 @@ class Downloader:
 				return TEMP_MSG["PID_DELETED_TEXT"]
 
 			# pid错误--无法找到您所请求的页面
-			elif resp["message"] ==  TEMP_MSG["PID_ERROR_TEXT"]:
+			elif resp["message"] == TEMP_MSG["PID_ERROR_TEXT"]:
 				logger.warning(f'{TEMP_MSG["PID_ERROR_TEXT"]} - {pid}')
 				return TEMP_MSG["PID_ERROR_TEXT"]
 
@@ -151,8 +185,13 @@ class Downloader:
 				logger.warning(f'{TEMP_MSG["PID_UNAUTH_ACCESS_2"]} - {pid}')
 				return TEMP_MSG["PID_UNAUTH_ACCESS_2"]
 				
-			elif resp["message"] ==  TEMP_MSG["LIMIT_TEXT"]:
+			elif resp["message"] == TEMP_MSG["LIMIT_TEXT"]:
 				return TEMP_MSG["LIMIT_TEXT"]
+			
+			# 作品被删除--{"error":true,"message":"","body":[]}
+			elif resp["message"] == "" and resp["body"] == []:
+					logger.warning(f'{TEMP_MSG["PID_DELETED_TEXT"]} - {pid}')
+					return TEMP_MSG["PID_DELETED_TEXT"]
 
 		# 作品数据
 		info = resp["body"]
@@ -249,8 +288,6 @@ class Downloader:
 		if bookmarkCount > LIMIT:
 			path = self.file_manager.mkdir_illusts(user_path,pid)
 			data["path"] = path
-			# 下载器启动
-			logger.info("id:{} 作品正在下载".format(pid))
 			self.filter(data)
 		else:
 			path = "None"
@@ -295,15 +332,14 @@ class Downloader:
 
 		if os.path.exists(illustPath) == True and os.path.getsize(illustPath) > 1000:
 			# 作品存在且大于1000字节,为了避免58字节错误页面和其他错误页面
-			# logger.info("{}已存在".format(name))
-			pass
+			logger.info("id:{} 作品已存在".format(data["pid"]))
 		else:
+			logger.info("id:{} 作品正在下载".format(data["pid"]))
 			c = self.baseRequest(options={"url":original})
 			if c == None:
 				return None
-			size = self.downSomething(illustPath,c.content)
+			size = self.write_image_bytes(illustPath,c.content)
 			logger.success(TEMP_MSG["DM_DOWNLOAD_SUCCESS_INFO"].format(self.class_name,name,self.size2Mb(size)))
-			time.sleep(1)
 
 	def illustMulti(self, data):
 		"""
@@ -328,15 +364,14 @@ class Downloader:
 			name = new_original.split("/")[-1].replace("_p","-")
 			illustPath = os.path.join(path_,name)
 			if os.path.exists(illustPath) == True and os.path.getsize(illustPath) > 1000:
-				# logger.debug("{}已存在".format(name))
-				pass
+				logger.info("id:{} 作品已存在".format(data["pid"]))
 			else:
+				logger.info("id:{} 作品正在下载".format(data["pid"]))
 				c = self.baseRequest(options={"url":new_original})
 				if c == None:
 					return None
-				size = self.downSomething(illustPath,c.content)
+				size = self.write_image_bytes(illustPath,c.content)
 				logger.success(TEMP_MSG["DM_DOWNLOAD_SUCCESS_INFO"].format(self.class_name,name,self.size2Mb(size)))
-				time.sleep(1)
 
 	def illustGif(self, data):
 		"""
@@ -355,9 +390,9 @@ class Downloader:
 		illustPath = os.path.join(path_,name)
 
 		if os.path.exists(illustPath) == True and os.path.getsize(illustPath) > 1000:
-			# logger.debug("{}已存在".format(name))
-			pass
+			logger.info("id:{} 作品已存在".format(data["pid"]))
 		else:
+			logger.info("id:{} 作品正在下载".format(data["pid"]))
 			z_info = self.baseRequest(options={"url":zipInfoUrl})
 			if z_info == None:
 				return None
@@ -395,9 +430,8 @@ class Downloader:
 			# 删除解压出来的图片
 			for j in files:
 				os.remove(os.path.join(path_,j))
-			time.sleep(1)
 
-	def downSomething(self, path, content):
+	def write_image_bytes(self, path, content):
 		"""
 		二进制数据写入图片
 		:params path: 图片路径
@@ -466,5 +500,42 @@ class Downloader:
 			logger.info("采取默认规则 score:{} bookmarkCount:{}".format(score,bookmarkCount))
 			return illust_default_level
 		return illust_level
+	
+	def deleteIllust(self,bookmark_ids):
+		"""
+		:params bookmark_ids: 批量删除的插画bookmark_id
+		["21665541658","21665541748"]
+		"""
+		u = "https://www.pixiv.net/ajax/illusts/bookmarks/remove"
+		_headers = self.ajax_headers.copy()
+		_headers["X-Csrf-Token"] = self.get_csrf_token()
+		_headers["Content-Type"] = "application/json"
+		resp = self.baseRequest(
+			options={"url":u,"headers": _headers,"method": "post"},
+			data=json.dumps({"bookmarkIds":bookmark_ids})
+		)
+		if resp.json()["error"]:logger.warning(TEMP_MSG["DELETE_ILLUST_ERR"])
+
+	def get_csrf_token(self):
+		resp = self.baseRequest(options={"url":self.baseURL})
+		token = re.findall(r'''.*?"token":"(.*?)",.*?''',resp.text)[0]
+		return token
+
+	def deleteIllustFlow(self,raw_data):
+		# 提取已删除插画的bookmark_id
+		_deleteIllust_dict = {}
+		for key,i in enumerate(raw_data["body"]["works"][::]):
+			if i["title"] == "-----":
+				_deleteIllust_dict[i["id"]] = i["bookmarkData"]["id"]
+				# 删除数据库记录
+				# self.db.delete_user_illust(key="pid",value=i["id"],table="bookmark")
+				# 去除"已删除插画"的数据
+				del raw_data["body"]["works"][key]
+		# 取消收藏
+		# self.deleteIllust(list(_deleteIllust_dict.keys()))
+		pid_list = [int(i["id"]) for i in raw_data["body"]["works"]]
+		return pid_list,raw_data
+
+
 
 # Downloader = Down()

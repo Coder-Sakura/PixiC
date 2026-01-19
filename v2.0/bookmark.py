@@ -8,14 +8,14 @@ author: coder_sakura
 import json
 import time
 
-from config import BOOKMARK_HIDE_ENABLE,SKIP_ISEXISTS_ILLUST,BOOKMARK_PATH
+from config import BOOKMARK_HIDE_ENABLE,SKIP_EXISTS_ILLUST,\
+	BOOKMARK_PATH,SLOW_MODE,THREAD_NUM,LOOP_LIMIT,BOOKMARK_CYCLE
 from downer import Downloader
 from log_record import logger
 from message import TEMP_MSG
 from thread_pool import ThreadPool,callback
-from ptimer import Timer
-# TODO
-from tag import TAG_FLAG_BOOKMARK
+
+THREAD_NUM = 4 if not SLOW_MODE else 1
 
 
 class Bookmark(object):
@@ -35,9 +35,9 @@ class Bookmark(object):
 
 		# 2020/10/20 收藏更新机制
 		# 默认第一次全更新
-		self.day_count = 5
-		self.day_all_update_num = 5
-		self.day_limit = 800
+		# self.day_count = 5
+		# self.day_all_update_num = 5
+		self.illustCount = 0			# 作品抓取计数器
 
 	def get_page_bookmark(self, offset, rest="show", raw=False):
 		"""
@@ -60,15 +60,12 @@ class Bookmark(object):
 			logger.warning(TEMP_MSG["BOOKMARK_PAGE_ERROR_INFO"].format(self.class_name,offset,offset+self.bookmark_page_offset))
 			return None
 		else:
-			# 未登录
-			if r["message"] == TEMP_MSG["UNLOGIN_TEXT"]:
-				return TEMP_MSG["UL_TEXT"]
-
 			if raw:
 				return r
-			res = r["body"]["works"]
-			illusts_pid = [int(i["id"]) for i in res]
-			return illusts_pid
+			else:
+				res = r["body"]["works"]
+				illusts_pid = [int(i["id"]) for i in res]
+				return illusts_pid
 
 	def check_update(self):
 		"""
@@ -81,7 +78,7 @@ class Bookmark(object):
 
 		# 数据库开关若关闭,直接更新
 		if hasattr(self.db,"pool") == False:
-			logger.warning(TEMP_MSG["UPDATE_INFO"].format(self.class_name))
+			logger.warning(TEMP_MSG["UPDATE_INFO"])
 			return True
 
 		# 判断非公开及公开
@@ -103,7 +100,7 @@ class Bookmark(object):
 		# 验证前十张
 		for _ in res["body"]["works"][:10]:
 			if not self.db.check_illust(int(_["id"]),table="bookmark")[0]:
-				logger.success(TEMP_MSG["UPDATE_INFO"].format(self.class_name))
+				logger.success(TEMP_MSG["UPDATE_INFO2"].format(self.class_name))
 				return True
 		
 		if BOOKMARK_HIDE_ENABLE:
@@ -123,7 +120,7 @@ class Bookmark(object):
 			# 验证前十张
 			for _ in res_hide["body"]["works"][:10]:
 				if not self.db.check_illust(int(_["id"]),table="bookmark")[0]:
-					logger.success(TEMP_MSG["UPDATE_INFO"].format(self.class_name))
+					logger.success(TEMP_MSG["UPDATE_INFO2"].format(self.class_name))
 					return True
 		
 		logger.warning(TEMP_MSG["UPDATE_CANLE_INFO"].format(self.class_name))
@@ -137,33 +134,28 @@ class Bookmark(object):
 		info = None
 
 		# 跳过已下载插画的请求
-		if SKIP_ISEXISTS_ILLUST and self.file_manager.search_isExistsPid(
-			BOOKMARK_PATH,"b",*(pid,)):
-			logger.info(f"SKIP_ISEXISTS_ILLUST - {pid}")
-			return info
-
+		if SKIP_EXISTS_ILLUST:
+			# 先检查文件夹,再检查数据库
+			if self.file_manager.search_isExistsPid(BOOKMARK_PATH,"b",*(pid,)):
+				logger.debug(f"SKIP_EXISTS_ILLUST FM - {pid}")
+				return info
+			# TODO check_illust返回的值用变量接收,避免多次调用check_illust函数
+			elif hasattr(self.db,"pool") and self.db.check_illust(pid,table="bookmark")[0]:
+				logger.debug(f"SKIP_EXISTS_ILLUST DB - {pid}")
+				return info
+		
 		try:
 			info = self.Downloader.get_illust_info(pid,extra="bookmark")
+			self.illustCount += 1
+			logger.debug(f"{self.illustCount}")
 		except Exception as e:
 			logger.warning(TEMP_MSG["ILLUST_NETWORK_ERROR_INFO"].format(self.class_name,pid,e))
 			logger.warning(f"{pid} INFO:{info}")
-			return info
+			return info			
 
 		if not info: 
 			logger.warning(TEMP_MSG["ILLUST_EMPTY_INFO"].format(self.class_name,pid))
 			return info
-
-		if info == TEMP_MSG["LIMIT_TEXT"]:
-			logger.warning(TEMP_MSG["LIMIT_TEXT_RESP"].format(pid))
-			timer = Timer()
-			timer.Downloader = self.Downloader
-			timer.pid = pid
-			timer.extra = "bookmark"
-			try:
-				info = timer.waiting(info)
-			except Exception as e:
-				logger.warning(f"Exception - {e} - {info}")
-			logger.success(f"共休眠{timer._time}秒,重新恢复访问")
 
 		# 数据库开关关闭
 		if hasattr(self.db,"pool") == False:
@@ -195,15 +187,14 @@ class Bookmark(object):
 					else:
 						logger.warning(TEMP_MSG["DELELE_ILLUST_FAIL_INFO"].format(self.class_name,pid))
 				else:
-					self.db.update_illust(info,table="bookmark")
+					result = self.db.update_illust(info,table="bookmark")
+					if result:logger.success(TEMP_MSG["UPDATE_SUCCESS_INFO"].format(self.class_name,pid))
 		except Exception as e:
 			logger.warning("thread_by_illust|Exception {}".format(e))
 			logger.warning(f"{pid} INFO:{info}")
 
 	@logger.catch
 	def run(self):
-		# TDOD TAG COUNT开始工作
-		TAG_FLAG_BOOKMARK = False
 		logger.info(TEMP_MSG["BEGIN_INFO"].format(self.class_name))
 		# 更新机制判定
 		if self.check_update() == False:
@@ -212,60 +203,94 @@ class Bookmark(object):
 
 		try:
 			offset = 0
-			pool = ThreadPool(8)
+			self.illustCount = 0
+			pool = ThreadPool(THREAD_NUM)
 			# 分别获取公开/非公开收藏插画
 			for rest in self.rest_list:
 				logger.info(f"===== 开始获取{self.rest_dict[rest]}收藏 =====")
 				while True:
-					# 累计更新小于5次,更新前800张(实际为768) TODO
-					if self.day_count < self.day_all_update_num:
-						if offset > self.day_limit:
-							logger.info(TEMP_MSG["UPDATE_DAY_LIMIT_INFO"].format(self.class_name,self.day_limit,self.day_count))
-							break
-
-					pid_list = self.get_page_bookmark(offset, rest)
-					# 获取异常返回None
-					if pid_list == None:
-						logger.warning(TEMP_MSG["BOOKMARK_PAGE_ERROR_INFO"].format(
-							self.class_name, self.rest_dict[rest],
-							offset, offset+self.bookmark_page_offset
-						))
-						continue
-					
-					# 未登录
-					if pid_list == TEMP_MSG["UL_TEXT"]:
-						logger.warning(TEMP_MSG["UNLOGIN_INFO"].format(self.class_name))
-						break
-
-					# 无收藏返回[]
-					if pid_list == []:
-						logger.warning(TEMP_MSG["BOOKMARK_PAGE_EMPTY_INFO"].format(self.class_name,
-							offset, offset+self.bookmark_page_offset))
+					raw_data = self.get_page_bookmark(offset, rest, raw=True)
+					if not self.check_page_bookmarkData(offset, raw_data):
 						offset = 0
 						break
 
+					# 去除已删除的插画
+					# pid_list = [int(i["id"]) for i in raw_data["body"]["works"] if i["title"] != "-----" and i["userId"] != 0]
+					pid_list = []
+					for i in raw_data["body"]["works"]:
+						if i["title"] != "-----" and i["userId"] != 0:
+							pid_list.append(int(i["id"]))
+						else:
+							logger.warning(f'{TEMP_MSG["PID_DELETED_TEXT"]} - {int(i["id"])}')
+
 					logger.info(TEMP_MSG["BOOKMARK_NOW_INFO"].format(offset,offset+self.bookmark_page_offset,len(pid_list)))
 					for pid in pid_list:
+						if self.illustCount > LOOP_LIMIT and LOOP_LIMIT != 0:
+							# 达到设置的单轮次抓取上限,进入休眠
+							self.illustCount = 0
+							logger.info(TEMP_MSG["LOOP_LIMIT_INFO"].format(BOOKMARK_CYCLE))
+							time.sleep(BOOKMARK_CYCLE)
+
+						# 每100张休眠60秒,只在慢速模式下生效
+						if self.illustCount % 100 == 0 and SLOW_MODE\
+							and self.illustCount != 0:
+							logger.info(TEMP_MSG["SLOW_LIMIT_INFO"])
+							time.sleep(60)
+
+						# 线程池添加任务
 						pool.put(self.thread_by_illust,(pid,),callback)
+						# time.sleep(0.1)	# test
 
 					offset += self.bookmark_page_offset
-					# 固定休眠
-					time.sleep(1)
 		except Exception as e:
 			logger.warning("Exception {}".format(e))
-		finally:
-			# 累计等于5次,不触发更新限制机制,全更新完后恢复day_count
-			if self.day_count == self.day_all_update_num:
-				logger.success(TEMP_MSG["UPDATE_DAY_ALL_INFO"].format(self.class_name))
-				self.day_count = 0
-			else:
-				self.day_count += 1
-
+			pool.terminate()  # 强制终止所有线程
+		except KeyboardInterrupt as e:
+			pool.terminate()
+		else:
 			pool.close()
-			# TDOD TAG COUNT完成工作
-			TAG_FLAG_BOOKMARK = True
+
 		logger.info("="*48)
 		logger.info(TEMP_MSG["SLEEP_INFO"].format(self.class_name))
+	
+	def check_page_bookmarkData(self, offset, raw_data):
+		"""
+		检查插画数据
+		:return: 
+			True	继续执行
+			False	异常数据
+		"""
+		# logger.debug(f"{raw_data}")
+
+		# 未登录
+		if raw_data["message"] == TEMP_MSG["UNLOGIN_TEXT"]:
+			logger.warning(TEMP_MSG["UNLOGIN_INFO"].format(self.class_name))
+			return False
+		
+		# 无收藏返回[]
+		if raw_data["body"]["works"] == []:
+			logger.warning(TEMP_MSG["BOOKMARK_PAGE_EMPTY_INFO"].format(self.class_name,
+				offset, offset+self.bookmark_page_offset))
+			return False
+		
+		# 获取异常返回None   TODO None处理
+		if raw_data["body"]["works"] == None:
+			logger.warning(TEMP_MSG["BOOKMARK_PAGE_ERROR_INFO"].format(
+				self.class_name, offset, offset+self.bookmark_page_offset
+			))
+			return False
+
+		# 正常情况
+		return True
+				
+		# TODO 检查插画已删除的作品
+		# pid_list,raw_data = Downloader.deleteIllustFlow(raw_data)
+		# TODO 传入pid_list -->未使用
+		# elif type(raw_data) == type(list()):
+		# 	if raw_data == []:				# 无收藏返回[]
+		# 		logger.warning(TEMP_MSG["BOOKMARK_PAGE_EMPTY_INFO"].format(self.class_name,
+		# 			offset, offset+self.bookmark_page_offset))
+		# 		return False
 
 
 # if __name__ == '__main__':

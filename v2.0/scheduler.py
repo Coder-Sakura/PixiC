@@ -1,5 +1,6 @@
 # coding=utf8
 import time
+import random
 from multiprocessing import Process
 
 from config import API_HOST,API_PORT,BOOKMARK_CYCLE,DB_ENABLE,USERS_CYCLE,\
@@ -17,8 +18,11 @@ class Scheduler(object):
 		from crawler import Crawler
 		c = Crawler()
 		while True:
-			c.run()
-			time.sleep(USERS_CYCLE)
+			try:
+				c.run()
+				time.sleep(USERS_CYCLE)
+			except KeyboardInterrupt as e:
+				break
 		
 	def scheduler_api(self):
 		"""
@@ -34,8 +38,11 @@ class Scheduler(object):
 		from bookmark import Bookmark
 		b = Bookmark()
 		while True:
-			b.run()
-			time.sleep(BOOKMARK_CYCLE)
+			try:
+				b.run()
+				time.sleep(BOOKMARK_CYCLE)
+			except KeyboardInterrupt as e:
+				break
 
 	def run(self):
 		logger.success(TEMP_MSG["VERSION_INFO"])
@@ -43,10 +50,12 @@ class Scheduler(object):
 		client.check()
 
 		if PIXIV_CRAWLER_ENABLED:
+			time.sleep(round(random.uniform(1.0, 3.0), 2))
 			pixiv_crawler = Process(target=self.scheduler_crawler)
 			pixiv_crawler.start()
 
 		if PIXIV_BOOKMARK_ENABLED:
+			time.sleep(round(random.uniform(1.0, 3.0), 2))
 			pixiv_bookmark = Process(target=self.scheduler_bookmark)
 			pixiv_bookmark.start()
 

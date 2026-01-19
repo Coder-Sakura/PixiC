@@ -1,5 +1,5 @@
 # coding=utf8
-
+# Original code by zhu327 (GitHub Gist: https://gist.github.com/zhu327/24b734ec227bc782e1d24a40962c59fe)
 """
 一个基于thread和queue的线程池,
 任务为队列元素,动态创建线程并重复利用.

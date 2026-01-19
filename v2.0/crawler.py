@@ -8,13 +8,13 @@ import json
 import time
 import re
 
-from config import SKIP_ISEXISTS_ILLUST,ROOT_PATH
+from config import SKIP_EXISTS_ILLUST,ROOT_PATH,SLOW_MODE,THREAD_NUM,LOOP_LIMIT,USERS_CYCLE
 from downer import Downloader
 from log_record import logger
 from message import TEMP_MSG
 from thread_pool import ThreadPool,callback
-from tag import TAG_FLAG_USER
-from ptimer import Timer
+
+THREAD_NUM = 4 if not SLOW_MODE else 1
 
 
 class Crawler(object):
@@ -34,6 +34,8 @@ class Crawler(object):
 		self.file_manager = self.Downloader.file_manager
 		self.db = self.Downloader.db
 		self.class_name = self.__class__.__name__
+
+		self.illustCount = 0			# 作品抓取计数器
 
 	def get_page_users(self, offset, rest="show"):
 		"""
@@ -178,13 +180,19 @@ class Crawler(object):
 		info = None
 		
 		# 跳过已下载插画的请求
-		if SKIP_ISEXISTS_ILLUST and self.file_manager.search_isExistsPid(
-			ROOT_PATH,"c",*(uid,pid,)):
-			logger.info(f"SKIP_ISEXISTS_ILLUST - {uid} - {pid}")
-			return info
+		if SKIP_EXISTS_ILLUST:
+			# 先检查文件夹,再检查数据库
+			if self.file_manager.search_isExistsPid(ROOT_PATH,"c",*(uid,pid,)):
+				logger.debug(f"SKIP_EXISTS_ILLUST FM - {pid}")
+				return info
+			elif hasattr(self.db,"pool") and self.db.check_illust(pid)[0]:
+				logger.debug(f"SKIP_EXISTS_ILLUST DB - {pid}")
+				return info
 
 		try:
 			info = self.Downloader.get_illust_info(pid)
+			self.illustCount += 1
+			logger.info(f"{self.illustCount}")
 		except Exception as e:
 			logger.warning(TEMP_MSG["ILLUST_NETWORK_ERROR_INFO"].format(self.class_name,pid,e))
 			logger.warning(f"{pid} INFO:{info}")
@@ -193,18 +201,6 @@ class Crawler(object):
 		if not info:
 			logger.warning(TEMP_MSG["ILLUST_EMPTY_INFO"].format(self.class_name,pid))
 			return info
-
-		if info == TEMP_MSG["LIMIT_TEXT"]:
-			logger.warning(TEMP_MSG["LIMIT_TEXT_RESP"].format(pid))
-			timer = Timer()
-			timer.Downloader = self.Downloader
-			timer.pid = pid
-			timer.extra = "pixiv"
-			try:
-				info = timer.waiting(info)
-			except Exception as e:
-				logger.warning(f"Exception - {e} - {info}")
-			logger.success(f"共休眠{timer._time}秒,重新恢复访问")
 
 		# 数据库开关关闭
 		if hasattr(self.db,"pool") == False:
@@ -236,15 +232,15 @@ class Crawler(object):
 					else:
 						logger.warning(TEMP_MSG["DELELE_ILLUST_FAIL_INFO"].format(self.class_name,pid))
 				else:
-					self.db.update_illust(info)
+					result = self.db.update_illust(info)
+					if result:logger.success(TEMP_MSG["UPDATE_SUCCESS_INFO"].format(self.class_name,pid))
+					
 		except Exception as e:
 			logger.warning("thread_by_illust|Exception {}".format(e))
 			logger.warning(f"{pid} INFO:{info}")
 
 	@logger.catch
 	def run(self):
-		# 开始工作
-		TAG_FLAG_USER = False
 		logger.info(TEMP_MSG["BEGIN_INFO"].format(self.class_name))
 		try:
 			u_list = self.get_users()
@@ -265,7 +261,8 @@ class Crawler(object):
 				logger.warning(TEMP_MSG["UNLOGIN_INFO"].format(self.class_name))
 				exit()
 
-		pool = ThreadPool(8)
+		self.illustCount = 0
+		pool = ThreadPool(THREAD_NUM)
 		try:
 			# 任务:获取关注列表
 			for i,u in enumerate(u_list):
@@ -286,10 +283,22 @@ class Crawler(object):
 					# 	self.db.update_latest_id(u)
 
 					for pid in all_illust:
-						pool.put(self.thread_by_illust,(pid,u["uid"],),callback)
+						if self.illustCount > LOOP_LIMIT and LOOP_LIMIT != 0:
+							# 达到设置的单轮次抓取上限,进入休眠
+							self.illustCount = 0
+							logger.info(TEMP_MSG["LOOP_LIMIT_INFO"].format(USERS_CYCLE))
+							time.sleep(USERS_CYCLE)
 
-					# 固定休眠
-					time.sleep(5)
+						# 每100张休眠60秒,只在慢速模式下生效
+						if self.illustCount % 100 == 0 and SLOW_MODE\
+							and self.illustCount != 0:
+							logger.info(TEMP_MSG["SLOW_LIMIT_INFO"])
+							time.sleep(60)
+			
+						# 线程池添加任务
+						pool.put(self.thread_by_illust,(pid,u["uid"],),callback)
+						# time.sleep(0.1)	# test
+
 				# 无作品更新
 				else:
 					logger.info(TEMP_MSG["NOW_USER_INFO"].format(self.class_name,position,u["userName"],u["uid"],len(all_illust)))
@@ -306,11 +315,11 @@ class Crawler(object):
 							logger.warning(TEMP_MSG["DELELE_USER_ILLUST_FAIL_INFO"].format(self.class_name,u["userName"],u["uid"]))
 		except Exception as e:
 			logger.warning("Exception:{}".format(e))
+			pool.terminate()
+		except KeyboardInterrupt as e:
+			pool.terminate()
+		else:
 			pool.close()
-		finally:
-			pool.close()
-			# 完成工作
-			TAG_FLAG_USER = True
 
 		# 任务:对已注销画师/用户的数据进行删除
 		self.check_account_byDB()
