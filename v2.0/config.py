@@ -11,7 +11,7 @@ PRO_DIR = r''
 
 
 # ================== LOGIN ==================
-USER_ID = ""							# Pixiv 账户的 uid
+USER_ID = ''							# Pixiv 账户的 uid
 
 """
 1. 启用以持久化 Chrome 已登录的 Pixiv 账号信息
@@ -68,9 +68,8 @@ DB_PORT = 3306
 DB_USER = 'root'
 DB_PASSWD = 'root'
 DB_DATABASE = 'moe'
-DB_CHARSET = "utf8mb4"
+DB_CHARSET = 'utf8mb4'
 # ================== DataBase ==================
-
 
 # ===============DEBUG===============
 DEBUG = False
