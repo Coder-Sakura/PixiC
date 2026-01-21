@@ -2,16 +2,16 @@
 # ================================================
 # 关注画师路径为空时,在脚本当前路径创建pixiv_crawler文件夹
 # 示例,D:\author
-ROOT_PATH = r''
+ROOT_PATH = ''
 
 # 收藏作品路径为空时,在脚本当前路径创建bookmark文件夹
 # 示例,D:\bookmark
-BOOKMARK_PATH = r''
+BOOKMARK_PATH = ''
 
 # Chrome浏览器用户数据目录
 # 根据wiki进行更改,此为路径参考,一般只需要将<user>更改为你的用户名
 # PRO_DIR = r'C:\Users\Administrator\AppData\Local\Google\Chrome\User Data'
-PRO_DIR = r''
+PRO_DIR = ''
 # ================================================
 
 
@@ -19,7 +19,7 @@ PRO_DIR = r''
 # USER_ID,即uid.用于获取对应用户的关注, 收藏作品.
 # 1.一般是填写自己的账号下载关注画师作品和收藏插画
 # 2.填写他人的uid时并选择其他目录作为下载目录, 避免下载混乱
-USER_ID = ""
+USER_ID = ''
 
 
 """
@@ -36,10 +36,7 @@ COOKIE_UPDATE_ENABLED = True
 """
 1. 自定义cookie,将下列的user_cookie替换为你的pixiv cookie
 2. 若有多个,则依次复制替换,注意结尾的','
-ORIGI_COOKIE_LIST = [
-	'user_cookie1',     
-	'user_cookie2',
-]
+ORIGI_COOKIE_LIST = []
 
 [WARNING]
 1. 注意! 当自定义多个cookie时, 请填写'USER_ID'字段
@@ -111,7 +108,7 @@ DB_PORT = 3306
 DB_USER = 'pixiv'
 DB_PASSWD = 'Huawei12#$'
 DB_DATABASE = 'moe'
-DB_CHARSET = "utf8mb4"
+DB_CHARSET = 'utf8mb4'
 # ================================================
 
 # ===============DEBUG===============

@@ -1,6 +1,6 @@
 # coding=utf8
 from selenium import webdriver
-from selenium.common.exceptions import InvalidArgumentException
+from selenium.common.exceptions import InvalidArgumentException, WebDriverException
 from requests.cookies import RequestsCookieJar
 import re
 import json
@@ -108,11 +108,10 @@ class Login(object):
 
 		try:
 			driver = webdriver.Chrome(chrome_options=chrome_options)
-			# selenium.common.exceptions.WebDriverException: 
-			# Message: unknown error: cannot create default profile directory
-			# PRO_DIR错误
-		except InvalidArgumentException as e:
+		except (InvalidArgumentException, WebDriverException) as e:
+			# 通常是因为 Chrome 浏览器已打开导致用户数据目录被占用
 			logger.warning(TEMP_MSG["GET_COOKIE_NOW_INFO"].format(self.class_name))
+			logger.debug(f"Chrome 启动失败详情: {e}")
 			exit()
 		else:
 			driver.get(self.host_url)

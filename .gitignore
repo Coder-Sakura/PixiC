@@ -1,7 +1,11 @@
 ##### Github Python.gitignore Start #####
 # custom
 *.bak
-
+pixiv_cookie
+backup/
+doc/
+test/
+tests/
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
