@@ -48,7 +48,7 @@ class Login(object):
 		判断向self.cookie_list添加cookie
 		"""
 		if pending_cookie not in self.cookie_list and \
-		   type(pending_cookie) == type(RequestsCookieJar()):
+		   isinstance(pending_cookie, RequestsCookieJar):
 			self.cookie_list.append(pending_cookie)
 
 	def reload_cookie_list(self,pending_cookie):
@@ -106,6 +106,7 @@ class Login(object):
 		# 用户目录配置
 		chrome_options.add_argument('user-data-dir='+PRO_DIR)
 
+		driver = None
 		try:
 			driver = webdriver.Chrome(chrome_options=chrome_options)
 		except (InvalidArgumentException, WebDriverException) as e:
@@ -114,9 +115,12 @@ class Login(object):
 			logger.debug(f"Chrome 启动失败详情: {e}")
 			exit()
 		else:
-			driver.get(self.host_url)
-			cookies = driver.get_cookies()
-			driver.quit()
+			try:
+				driver.get(self.host_url)
+				cookies = driver.get_cookies()
+			finally:
+				# 确保浏览器进程正常退出
+				driver.quit()
 
 			with open(COOKIE_NAME, "w") as fp:
 				json.dump(cookies, fp)
@@ -153,12 +157,19 @@ class Login(object):
 		# return self.cookie
 
 	def get_user_id(self):
+		# 确保存在可用的 Cookie，避免 random.choice 抛异常
+		if not self.cookie_list:
+			logger.warning(TEMP_MSG["LOGIN_ERROR_INFO"].format(self.class_name))
+			exit()
 		resp = requests.get(self.host_url,headers=headers,cookies=random.choice(self.cookie_list)).text
 		if "Please turn JavaScript on and reload the page." in resp:
 			logger.warning(TEMP_MSG["GOOGLE_CAPTCHA_ERROR_INFO"].format(self.class_name))
 			exit()
-		user_id = re.findall(r'''.*?,user_id:"(.*?)",.*?''',resp.replace(" ",""))[0]
-		return user_id
+		match = re.search(r'''.*?,user_id:"(.*?)",.*?''',resp.replace(" ",""))
+		if not match:
+			logger.warning(TEMP_MSG["LOGIN_ERROR_INFO"].format(self.class_name))
+			exit()
+		return match.group(1)
 
 	def subprocess_check(self):
 		"""
