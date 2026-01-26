@@ -24,7 +24,7 @@ SCHEMA = [
         {'key': 'ORIGI_COOKIE_LIST', 'type': 'list', 'label': '自定义 Cookie 列表 (可选)', 'desc': '每行输入一个完整 Cookie'},
     ]},
     {'section': 'Switches', 'label': '功能开关', 'items': [
-        {'key': 'SKIP_ISEXISTS_ILLUST', 'type': 'bool', 'label': '跳过已存在插画', 'desc': '跳过本地已下载的插画'},
+        {'key': 'SKIP_EXISTS_ILLUST', 'type': 'bool', 'label': '跳过已存在插画', 'desc': '跳过本地已下载的插画'},
         {'key': 'PIXIV_CRAWLER_ENABLED', 'type': 'bool', 'label': '启用画师爬虫', 'desc': '关注画师作品爬虫'},
         {'key': 'PIXIV_BOOKMARK_ENABLED', 'type': 'bool', 'label': '启用收藏爬虫', 'desc': '用户收藏作品爬虫'},
         {'key': 'BOOKMARK_HIDE_ENABLE', 'type': 'bool', 'label': '获取未公开收藏', 'desc': '是否获取私密收藏'},
@@ -54,6 +54,7 @@ SCHEMA = [
 ]
 
 def parse_cookie_list(text):
+    # 将多行 Cookie 文本解析为去空行的列表
     if not text:
         return []
     return [line.strip() for line in text.split('\n') if line.strip()]
@@ -106,10 +107,8 @@ class ConfigManager:
             
             # 准备替换字符串
             if item_type == 'text':
-                if '\\' in str(value):
-                    replacement = f"r'{value}'"
-                else:
-                    replacement = f"'{value}'"
+                safe_text = "" if value is None else value
+                replacement = repr(safe_text)
             elif item_type == 'bool':
                 replacement = str(value)
             elif item_type == 'number':
@@ -118,11 +117,11 @@ class ConfigManager:
                 if not value:
                     replacement = "[]"
                 else:
-                    items_str = ",\n\t".join([f"'{v}'" for v in value])
+                    items_str = ",\n\t".join([repr(v) for v in value])
                     replacement = f"[\n\t{items_str},\n]"
             
             if item_type == 'list':
-                 # 匹配列表定义
+                 # 匹配列表定义（跨行）
                  pattern = f"({key}\\s*=\\s*\\[)(.*?)(\\])"
                  matches = list(re.finditer(pattern, content, re.DOTALL | re.MULTILINE))
             else:
@@ -174,11 +173,6 @@ class PixiCConfigGUI:
         self.root.geometry("600x800")
         self.scheduler = None
         self.scheduler_thread = None
-        self.log_sink_id = None
-        self.log_lines = []
-        self.log_limit = 5000
-        self.log_level_var = tk.StringVar(value="INFO")
-        self.current_log_level = "INFO"
         self.entry_widgets = {}
         
         self.cm = ConfigManager(CONFIG_FILE)
@@ -198,11 +192,9 @@ class PixiCConfigGUI:
         notebook.pack(fill=tk.BOTH, expand=True)
 
         settings_container = ttk.Frame(notebook)
-        logs_container = ttk.Frame(notebook)
         more_container = ttk.Frame(notebook)
         
         notebook.add(settings_container, text="设置")
-        notebook.add(logs_container, text="运行日志")
         notebook.add(more_container, text="项目主页")
         self.notebook = notebook
 
@@ -248,23 +240,6 @@ class PixiCConfigGUI:
                 warn.pack(fill=tk.X, pady=4)
             for item in section['items']:
                 self._create_item_widget(frame, item)
-
-        log_top = ttk.Frame(logs_container, padding="5")
-        log_top.pack(fill=tk.X)
-        ttk.Label(log_top, text="日志等级过滤").pack(side=tk.LEFT)
-        level_cb = ttk.Combobox(log_top, textvariable=self.log_level_var, values=["ERROR","WARN","INFO","DEBUG"], state="readonly", width=8)
-        level_cb.pack(side=tk.LEFT, padx=5)
-        def _update_level(*args):
-            self.current_log_level = self.log_level_var.get()
-            self._refresh_log_display()  # 切换等级时实时刷新已显示的日志
-        self.log_level_var.trace_add("write", lambda *a: _update_level())
-        
-        # 日志测试按钮 (用户测试功能)
-        ttk.Button(log_top, text="测试日志", command=self._test_log_print).pack(side=tk.RIGHT, padx=5)
-        
-        ttk.Button(log_top, text="清除日志", command=self.clear_logs).pack(side=tk.RIGHT)
-        self.log_text = scrolledtext.ScrolledText(logs_container, state="disabled", height=20, font=('Consolas', 9))
-        self.log_text.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
     def _create_item_widget(self, parent, item):
         """根据配置项类型创建对应的 GUI 控件"""
@@ -379,9 +354,6 @@ class PixiCConfigGUI:
         self.start_btn.config(state="disabled")
         self.stop_btn.config(state="normal")
         
-        # 自动切换到运行日志页
-        self.notebook.select(1)
-        
         # 记录日志
         logger.info("用户触发启动项目...")
         
@@ -430,7 +402,6 @@ class PixiCConfigGUI:
             self.scheduler_thread = threading.Thread(target=_run, daemon=True)
             self.scheduler_thread.start()
             self.status_var.set("运行中")
-            self.attach_log_sink()
         except Exception as e:
             messagebox.showerror("错误", f"启动失败: {str(e)}")
 
@@ -452,7 +423,6 @@ class PixiCConfigGUI:
             try:
                 self.scheduler.stop()
                 self.scheduler = None
-                self.detach_log_sink()
             except Exception as e:
                 messagebox.showerror("错误", f"停止失败: {str(e)}")
 
@@ -478,90 +448,10 @@ class PixiCConfigGUI:
     def _test_start_logic(self):
         """测试启动逻辑 (不真实运行项目)"""
         self.status_var.set("测试运行中...")
-        self.attach_log_sink()
         logger.info("测试模式：项目已启动（模拟）")
         logger.debug("测试模式：调试信息输出...")
         logger.warning("测试模式：警告信息输出...")
-
-    def _test_log_print(self):
-        """测试日志打印功能 (验证过滤等级是否生效)"""
-        self.attach_log_sink()
-        logger.info(f"--- 开始测试日志过滤 (当前过滤等级: {self.current_log_level}) ---")
-        logger.debug("这是一条 DEBUG 级别测试日志 (仅在等级为 DEBUG 时可见)")
-        logger.info("这是一条 INFO 级别测试日志 (等级为 INFO/DEBUG 时可见)")
-        logger.warning("这是一条 WARNING 级别测试日志 (等级为 WARN 及以下可见)")
-        logger.error("这是一条 ERROR 级别测试日志 (始终可见)")
-        logger.info("--- 测试日志发送完毕 ---")
     # === 用户测试功能结束 ===
-
-    def attach_log_sink(self):
-        if getattr(self, "log_sink_id", None):
-            return
-            
-        def sink(msg):
-            rec = msg.record
-            lvl = rec["level"].name
-            text = rec["message"]
-            
-            # 格式化单行日志
-            line = f"[{rec['time'].strftime('%H:%M:%S')}] {lvl} | {text}\n"
-            
-            # 存储原始日志信息，用于追溯过滤
-            self.log_lines.append((lvl, line))
-            if len(self.log_lines) > self.log_limit:
-                self.log_lines = self.log_lines[-self.log_limit:]
-            
-            # 检查当前等级，决定是否立即显示
-            if self._should_show_log(lvl):
-                try:
-                    def _update():
-                        self.log_text.configure(state="normal")
-                        self.log_text.insert(tk.END, line)
-                        self.log_text.see(tk.END)
-                        self.log_text.configure(state="disabled")
-                    self.root.after(0, _update)
-                except Exception:
-                    pass
-        self.log_sink_id = logger.add(sink, level="DEBUG", enqueue=True)
-
-    def _should_show_log(self, lvl_name):
-        """判断给定等级的日志是否应该显示"""
-        order = {"ERROR": 4, "WARNING": 3, "INFO": 2, "DEBUG": 1}
-        want = self.current_log_level
-        want_norm = "WARNING" if want == "WARN" else want
-        return order.get(lvl_name, 1) >= order.get(want_norm, 2)
-
-    def _refresh_log_display(self):
-        """根据当前过滤等级重新渲染所有日志"""
-        if not hasattr(self, 'log_text'):
-            return
-        self.log_text.configure(state="normal")
-        self.log_text.delete("1.0", tk.END)
-        
-        for lvl, line in self.log_lines:
-            if self._should_show_log(lvl):
-                self.log_text.insert(tk.END, line)
-        
-        self.log_text.see(tk.END)
-        self.log_text.configure(state="disabled")
-
-    def detach_log_sink(self):
-        if getattr(self, "log_sink_id", None):
-            try:
-                logger.remove(self.log_sink_id)
-            except Exception:
-                pass
-            self.log_sink_id = None
-
-    def clear_logs(self):
-        self.log_lines = []
-        self.log_text.configure(state="normal")
-        self.log_text.delete("1.0", tk.END)
-        self.log_text.configure(state="disabled")
-
-    def enforce_log_limit(self):
-        if len(self.log_lines) > self.log_limit:
-            self.log_lines = self.log_lines[-self.log_limit:]
 if __name__ == '__main__':
     root = tk.Tk()
     # 尝试设置图标（如果有）

@@ -1,6 +1,5 @@
 # coding=utf8
 import time
-import random
 from multiprocessing import Process
 import multiprocessing
 
@@ -30,8 +29,11 @@ class Scheduler(object):
 		# API 服务
 		from api import app
 		try:
-			# 回退为原始参数类型传递，保持关键参数不私自修改
-			app.run(API_HOST, API_PORT)
+			try:
+				api_port = int(API_PORT)
+			except Exception:
+				api_port = API_PORT
+			app.run(API_HOST, api_port)
 		except Exception as e:
 			logger.warning(f"API run error: {e}")
 
