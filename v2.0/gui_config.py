@@ -338,6 +338,7 @@ class PixiCConfigGUI:
             # 写入配置文件
             self.cm.update_config(new_values)
             if not silent:
+                logger.info(new_values)
                 messagebox.showinfo("成功", "配置已保存！\n点击“启动项目”即可应用新配置。")
             return True
         except Exception as e:
@@ -357,9 +358,9 @@ class PixiCConfigGUI:
         # 记录日志
         logger.info("用户触发启动项目...")
         
-        # === 实际启动逻辑 (此处暂缓，改为用户测试模式) ===
-        # self._real_start_project() 
-        self._test_start_logic()
+        # 启动逻辑
+        self._real_start_project() 
+        # self._test_start_logic()
 
     def _real_start_project(self):
         """真正的项目启动逻辑"""
@@ -382,6 +383,14 @@ class PixiCConfigGUI:
             else:
                 import config
                 
+            # 2.1 重新加载 login 模块，确保其获取最新的 config 配置 (如 COOKIE_UPDATE_ENABLED)
+            # 必须在 config reload 之后，scheduler reload 之前
+            if 'login' in sys.modules:
+                import login
+                importlib.reload(login)
+            else:
+                import login
+
             # 3. 重新加载 scheduler 模块，确保它使用最新的 config 变量
             # 注意：由于 scheduler 使用 'from config import ...'，必须在 config reload 后 reload scheduler
             from scheduler import Scheduler
