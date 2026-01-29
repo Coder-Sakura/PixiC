@@ -48,9 +48,91 @@ class db_client(object):
 				blocking=True,
 			    host=DB_HOST,user=DB_USER,passwd=DB_PASSWD,db=DB_DATABASE,port=DB_PORT,charset=DB_CHARSET
 			)
+			self.init_tables()
 		except pymysql.err.OperationalError as e:
 			logger.warning(TEMP_MSG["DB_CONNECT_ERROR_INFO"].format(e))
 			exit()
+
+	def init_tables(self):
+		"""
+		初始化数据库表结构
+		"""
+		conn, cur = self.get_conn()
+		
+		# pxusers 表 (参考 doc/create.sql)
+		sql_pxusers = """
+		CREATE TABLE IF NOT EXISTS pxusers(
+		  id int AUTO_INCREMENT PRIMARY KEY,
+		  uid int(10) NOT NULL,
+		  userName varchar(100) NOT NULL,
+		  latest_id int(10) NOT NULL,
+		  path varchar(255) NOT NULL
+		)ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4;
+		"""
+		
+		# pixiv 表 (参考 doc/create.sql)
+		sql_pixiv = """
+		CREATE TABLE IF NOT EXISTS pixiv(
+		  id int AUTO_INCREMENT PRIMARY KEY,
+		  uid int(10) NOT NULL,
+		  userName varchar(100) NOT NULL,
+		  pid int(10) NOT NULL,
+		  purl varchar(255) NOT NULL,
+		  title varchar(255) NOT NULL,
+		  tag varchar(999) NOT NULL,
+		  pageCount int(3) NOT NULL,
+		  illustType tinyint(3) NOT NULL,
+		  is_r18 tinyint(1) NOT NULL,
+		  is_ai tinyint(1) NOT NULL,
+		  score float(5,3) NOT NULL,
+		  illust_level varchar(20) NOT NULL,
+		  viewCount int NOT NULL,
+		  bookmarkCount int NOT NULL,
+		  likeCount int NOT NULL,
+		  commentCount int NOT NULL,
+		  urls varchar(999) NOT NULL,
+		  original varchar(255) NOT NULL,
+		  path varchar(255) NOT NULL
+		)ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4;
+		"""
+		
+		# bookmark 表 (参考 doc/create.sql)
+		sql_bookmark = """
+		CREATE TABLE IF NOT EXISTS bookmark(
+		  id int AUTO_INCREMENT PRIMARY KEY,
+		  uid int(10) NOT NULL,
+		  userName varchar(100) NOT NULL,
+		  pid int(10) NOT NULL,
+		  purl varchar(255) NOT NULL,
+		  title varchar(255) NOT NULL,
+		  tag varchar(999) NOT NULL,
+		  pageCount int(3) NOT NULL,
+		  illustType tinyint(3) NOT NULL,
+		  is_r18 tinyint(1) NOT NULL,
+		  is_ai tinyint(1) NOT NULL,
+		  score float(5,3) NOT NULL,
+		  illust_level varchar(20) NOT NULL,
+		  viewCount int NOT NULL,
+		  bookmarkCount int NOT NULL,
+		  likeCount int NOT NULL,
+		  commentCount int NOT NULL,
+		  urls varchar(999) NOT NULL,
+		  original varchar(255) NOT NULL,
+		  path varchar(255) NOT NULL
+		)ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4;
+		"""
+
+		try:
+			cur.execute(sql_pxusers)
+			cur.execute(sql_pixiv)
+			cur.execute(sql_bookmark)
+			conn.commit()
+		except Exception as e:
+			logger.warning(f"数据库初始化失败: {e}")
+			conn.rollback()
+		finally:
+			cur.close()
+			conn.close()
 
 	def get_conn(self):
 		"""
