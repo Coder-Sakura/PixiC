@@ -95,6 +95,10 @@ class Login(object):
 		配置selenium以访问站点,持久化cookie 
 		'''
 		logger.warning(TEMP_MSG["GET_COOKIE_NOW_INFO"].format(self.class_name))
+		if not PRO_DIR:
+			logger.warning("未配置 Chrome 用户数据目录(PRO_DIR)，将尝试使用本地 pixiv_cookie 文件")
+			self.set_cookie()
+			return
 		chrome_options = webdriver.ChromeOptions()
 		# 静默模式可能会导致获取不了cookie
 		# chrome_options.add_argument('--headless')	
