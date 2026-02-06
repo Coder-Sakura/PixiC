@@ -136,7 +136,7 @@ class Bookmark(object):
 		# 跳过已下载插画的请求
 		if SKIP_EXISTS_ILLUST:
 			# 先检查文件夹,再检查数据库
-			if self.file_manager.search_isExistsPid(BOOKMARK_PATH,"b",*(pid,)):
+			if self.file_manager.search_isExistsPid(self.file_manager.bk_path,"b",*(pid,)):
 				logger.debug(f"SKIP_EXISTS_ILLUST FM - {pid}")
 				return info
 			# TODO check_illust返回的值用变量接收,避免多次调用check_illust函数
@@ -262,8 +262,14 @@ class Bookmark(object):
 		"""
 		# logger.debug(f"{raw_data}")
 
+		if not raw_data:
+			logger.warning(TEMP_MSG["BOOKMARK_PAGE_ERROR_INFO"].format(
+				self.class_name, offset, offset+self.bookmark_page_offset
+			))
+			return False
+
 		# 未登录
-		if raw_data["message"] == TEMP_MSG["UNLOGIN_TEXT"]:
+		if raw_data.get("message") == TEMP_MSG["UNLOGIN_TEXT"]:
 			logger.warning(TEMP_MSG["UNLOGIN_INFO"].format(self.class_name))
 			return False
 		
