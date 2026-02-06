@@ -378,6 +378,7 @@ class db_client(object):
 		:params limit: 每次返回的数据, -1不做限制
 		"""
 		conn,cur = self.get_conn()
+		limit_sql = ""
 		if limit != -1:
 			limit_sql = f"LIMIT {limit}"
 

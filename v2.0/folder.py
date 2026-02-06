@@ -35,7 +35,7 @@ class Folder(object):
 		uid = str(info["uid"])
 		userName = info["userName"]
 
-		userName = re.sub('[\/:*?"<>|]','_',userName)
+		userName = re.sub(r'[\/:*?"<>|]','_',userName)
 		# folder_name = uid + '--' + userName
 		painter_name = '--'.join([str(uid),str(userName)])
 
