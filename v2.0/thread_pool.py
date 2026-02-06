@@ -45,13 +45,12 @@ class ThreadPool:
         :param max_num: 线程池最大线程数量
         :param max_task_num: 任务队列长度
         """
-        # 如果提供了最大任务数的参数，则将队列的最大元素个数设置为这个值。
-        max_task_num = 20
-        if max_task_num:
-            self.q = queue.Queue(max_task_num)
         # 默认队列可接受无限多个的任务
-        else:
+        if max_task_num is None:
             self.q = queue.Queue()
+        # 如果提供了最大任务数的参数，则将队列的最大元素个数设置为这个值。
+        else:
+            self.q = queue.Queue(max_task_num)
         # print("创建好队列了")
         # 设置线程池最多可实例化的线程数
         self.max_num = max_num
