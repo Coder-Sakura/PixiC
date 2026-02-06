@@ -182,7 +182,7 @@ class Crawler(object):
 		# 跳过已下载插画的请求
 		if SKIP_EXISTS_ILLUST:
 			# 先检查文件夹,再检查数据库
-			if self.file_manager.search_isExistsPid(ROOT_PATH,"c",*(uid,pid,)):
+			if self.file_manager.search_isExistsPid(self.file_manager.path,"c",*(uid,pid,)):
 				logger.debug(f"SKIP_EXISTS_ILLUST FM - {pid}")
 				return info
 			elif hasattr(self.db,"pool") and self.db.check_illust(pid)[0]:
